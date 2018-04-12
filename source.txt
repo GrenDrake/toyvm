@@ -1,0 +1,17 @@
+.export start
+
+start:
+    loadi   0   10
+loop:
+    saynum  0
+    loadi   1   1
+    sub     0   1   0
+    jnz     0   loop
+
+    loadwi  0   0
+    saynum  0
+
+    loadi   0   4
+    loadwr  5   4
+    saynum  5
+    exit
