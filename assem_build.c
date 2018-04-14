@@ -44,6 +44,7 @@ struct mnemonic mnemonics[] = {
     {   op_mod,     "mod",      0 },
 
     {   op_saynum,  "saynum",   0 },
+    {   op_saychar, "saychar",  0 },
     {   op_saystr,  "saystr",   0 },
 
     {   op_jump,    "jump",     0 },

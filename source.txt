@@ -4,8 +4,10 @@ hello_msg:
     .string "Hello world!"
 
 start:
-    pushw hello_msg
+    pushw    hello_msg
     saystr
+    pushb    10
+    saychar
 
     pushb    10
 loop:
