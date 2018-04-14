@@ -9,6 +9,8 @@ static void skip_line(struct token **current);
 static void parse_error(struct token *where, const char *err_msg);
 
 static int data_string(FILE *out, struct token *first, int *code_pos);
+static int data_zeroes(FILE *out, struct token *first, int *code_pos);
+static int data_bytes(FILE *out, struct token *first, int *code_pos, int width);
 
 struct mnemonic mnemonics[] = {
     {   op_exit,    "exit",     0 },
@@ -78,6 +80,23 @@ static int data_string(FILE *out, struct token *first, int *code_pos) {
     }
     fputc(0, out);
     *code_pos += pos + 1;
+    skip_line(&here);
+    return 1;
+}
+
+static int data_zeroes(FILE *out, struct token *first, int *code_pos) {
+    struct token *here = first->next;
+
+    if (here->type != tt_integer) {
+        parse_error(here, "expected integer");
+        return 0;
+    }
+    
+    printf("0x%08X zeroes (%d)\n", *code_pos, here->i);
+    for (int i = 0; i < here->i; ++i) {
+        fputc(0, out);
+    }
+    *code_pos += here->i;
     skip_line(&here);
     return 1;
 }
@@ -174,6 +193,11 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         }
         if (strcmp(here->text, ".word") == 0) {
             data_bytes(out, here, &code_pos, 4);
+            skip_line(&here);
+            continue;
+        }
+        if (strcmp(here->text, ".zero") == 0) {
+            data_zeroes(out, here, &code_pos);
             skip_line(&here);
             continue;
         }

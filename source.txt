@@ -1,7 +1,8 @@
 .export start
 
 some_bytes:
-    .byte 1 2 3 4 99 256
+    .byte 1 2 3 4
+    .zero 20
 a_short:
     .short 256
 a_word:
