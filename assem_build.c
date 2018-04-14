@@ -5,6 +5,8 @@
 #include "assemble.h"
 #include "opcode.h"
 
+#define HEADER_SIZE 12
+
 struct label_def {
     char *name;
     int pos;
@@ -129,10 +131,16 @@ int parse_tokens(struct token_list *list) {
     int done_initial = 0;
     struct label_def *first_lbl = NULL;
 
-    FILE *out = fopen("output.bc", "wb");
+    FILE *out = fopen("output.bc", "wb+");
     if (!out) {
         printf("could not open output file\n");
         return 0;
+    }
+
+    // write empty header
+    for (int i = 0; i < HEADER_SIZE; ++i) {
+        fputc(0, out);
+        ++code_pos;
     }
 
     struct token *here = list->first;
@@ -235,6 +243,17 @@ int parse_tokens(struct token_list *list) {
         
         skip_line(&here);
     }
+
+    // write header info
+    fseek(out, 4, SEEK_SET);
+    struct label_def *label = get_label(first_lbl, "start");
+    if (label) {
+        unsigned start_address = label->pos;
+        fwrite(&start_address, 4, 1, out);
+    } else {
+        fprintf(stderr, "missing start label");
+    }
+
 
     fclose(out);
     printf("\nLABELS\n");

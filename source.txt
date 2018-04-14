@@ -1,5 +1,7 @@
 .export start
 
+    saynum
+
 start:
     pushb    10
 loop:

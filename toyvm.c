@@ -28,7 +28,8 @@ int main() {
     fclose(in);
 
     vm_init_memory(&vm, filesize, memory);
-    if (!vm_run(&vm, 0)) {
+    int start_addr = vm_read_word(&vm, 4);
+    if (!vm_run(&vm, start_addr)) {
         fprintf(stderr, "vm error occured.\n");
     }
     vm_free(&vm);
