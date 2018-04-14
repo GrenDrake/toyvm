@@ -13,20 +13,30 @@ start:
 loop:
     stkdup
     saynum
+    pushb    32
+    saychar
     pushb    1
     sub
     stkdup
     pushw    loop
     jnz
+    pushb    10
+    saychar
 
     pushb    0
     readw
     saynum
+    pushb    10
+    saychar
     pushb    0
     reads
     saynum
+    pushb    10
+    saychar
     pushb    0
     readb
     saynum
+    pushb    10
+    saychar
 
     exit

@@ -121,7 +121,7 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
 
             case op_saynum:
                 MIN_STACK(vm, 1);
-                printf("%d\n", vm_stk_pop(vm));
+                printf("%d", vm_stk_pop(vm));
                 break;
             case op_saychar:
                 MIN_STACK(vm, 1);
@@ -129,7 +129,7 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
                 break;
             case op_saystr:
                 MIN_STACK(vm, 1);
-                printf("%s\n", &vm->fixed_memory[vm_stk_pop(vm)]);
+                printf("%s", &vm->fixed_memory[vm_stk_pop(vm)]);
                 break;
 
             case op_jnz:
