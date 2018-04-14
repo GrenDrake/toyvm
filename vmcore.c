@@ -97,10 +97,29 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
                 vm_stk_push(vm, operand);
                 break;
 
+            case op_add:
+                MIN_STACK(vm, 2);
+                vm_stk_set(vm, 2, vm_stk_peek(vm, 2) + vm_stk_peek(vm, 1));
+                vm_stk_pop(vm);
+                break;
             case op_sub:
                 MIN_STACK(vm, 2);
-
                 vm_stk_set(vm, 2, vm_stk_peek(vm, 2) - vm_stk_peek(vm, 1));
+                vm_stk_pop(vm);
+                break;
+            case op_mul:
+                MIN_STACK(vm, 2);
+                vm_stk_set(vm, 2, vm_stk_peek(vm, 2) * vm_stk_peek(vm, 1));
+                vm_stk_pop(vm);
+                break;
+            case op_div:
+                MIN_STACK(vm, 2);
+                vm_stk_set(vm, 2, vm_stk_peek(vm, 2) / vm_stk_peek(vm, 1));
+                vm_stk_pop(vm);
+                break;
+            case op_mod:
+                MIN_STACK(vm, 2);
+                vm_stk_set(vm, 2, vm_stk_peek(vm, 2) % vm_stk_peek(vm, 1));
                 vm_stk_pop(vm);
                 break;
 
