@@ -4,6 +4,9 @@ hello_msg:
     .string "Hello world!"
 
 start:
+    pushw hello_msg
+    saystr
+
     pushb    10
 loop:
     stkdup

@@ -20,6 +20,7 @@ enum opcode {
     op_mod,
 
     op_saynum,
+    op_saystr,
 
     op_jump,
     op_jumprel,
