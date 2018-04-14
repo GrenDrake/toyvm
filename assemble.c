@@ -5,7 +5,7 @@
 
 
 int main(int argc, char *argv[]) {
-    const char *infile  = "source.txt";
+    const char *infile  = "source.a";
     const char *outfile = "output.bc";
 
     if (argc >= 2) {

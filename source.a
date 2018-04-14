@@ -10,7 +10,7 @@ a_word:
 hello_msg:
     .string "Hello world!"
 
-    .include "glk.txt"
+    .include "glk.a"
 
 start:
     pushw    hello_msg
