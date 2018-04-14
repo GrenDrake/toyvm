@@ -1,6 +1,7 @@
 .export start
 
-    saynum
+hello_msg:
+    .string "Hello world!"
 
 start:
     pushb    10

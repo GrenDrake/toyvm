@@ -176,6 +176,27 @@ int parse_tokens(struct token_list *list) {
             continue;
         }
 
+        if (strcmp(here->text, ".string") == 0) {
+            here = here->next;
+            if (here->type != tt_string) {
+                parse_error(here, "expected string");
+                skip_line(&here);
+                continue;
+            }
+            
+            printf("0x%08X string ~%s~\n", code_pos, here->text);
+            int pos = 0;
+            while (here->text[pos] != 0) {
+                fputc(here->text[pos], out);
+                ++pos;
+            }
+            fputc(0, out);
+            code_pos += pos + 1;
+            skip_line(&here);
+            continue;
+        }
+
+
         struct mnemonic *m = mnemonics;
         while (m->name && strcmp(m->name, here->text) != 0) {
             ++m;
