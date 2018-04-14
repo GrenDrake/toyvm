@@ -132,6 +132,29 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
             skip_line(&here);
             continue;
         }
+        
+        if (strcmp(here->text, ".byte") == 0) {
+            here = here->next;
+            printf("0x%08X bytes", code_pos);
+
+            int found_error = 0;
+            while (!found_error && here && here->type != tt_eol) {
+                if (here->type != tt_integer) {
+                    printf("\n");
+                    parse_error(here, "expected integer");
+                    found_error = 1;
+                    continue;
+                }
+                
+                printf(" %d", here->i % 256);
+                fputc(here->i, out);
+                ++code_pos;
+                here = here->next;
+            }
+            printf("\n");
+            skip_line(&here);
+            continue;
+        }
 
 
         struct mnemonic *m = mnemonics;
