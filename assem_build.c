@@ -11,17 +11,10 @@ struct label_def {
     struct label_def *next;
 };
 
-enum instr_form {
-    if_rrr, // 3 registers
-    if_ri,  // 1 register, short immediate
-    if_i    // long immediate
-};
-
 struct mnemonic {
     int opcode;
     const char *name;
-    int operands;
-    enum instr_form form;
+    int operand_size;
 };
 
 static void skip_line(struct token **current);
@@ -31,21 +24,30 @@ static void dump_labels(struct label_def *first);
 static void free_labels(struct label_def *first);
 
 struct mnemonic mnemonics[] = {
-    {   op_exit,    "exit",     0,  if_rrr  },
-    {   op_loadi,   "loadi",    2,  if_ri   },
-    {   op_loadwi,  "loadwi",   2,  if_ri   },
-    {   op_loadwr,  "loadwr",   2,  if_rrr  },
-    {   op_add,     "add",      3,  if_rrr  },
-    {   op_saynum,  "saynum",   1,  if_rrr  },
-    {   op_jump,    "jump",     1,  if_i    },
-    {   op_jumprel, "jumprel",  1,  if_i    },
-    {   op_jz,      "jz",       2,  if_ri   },
-    {   op_jnz,     "jnz",      2,  if_ri   },
-    {   op_sub,     "sub",      3,  if_rrr  },
-    {   op_mul,     "mul",      3,  if_rrr  },
-    {   op_div,     "div",      3,  if_rrr  },
-    {   op_mod,     "mod",      3,  if_rrr  },
-    {   op_bad,     NULL,       0,  if_rrr  }
+    {   op_exit,    "exit",     0 },
+    
+    {   op_stkdup,  "stkdup",   0 },
+
+    {   op_pushb,   "pushb",    1 },
+    {   op_pushs,   "pushs",    2 },
+    {   op_pushw,   "pushw",    4 },
+    {   op_readb,   "readb",    0 },
+    {   op_reads,   "reads",    0 },
+    {   op_readw,   "readw",    0 },
+
+    {   op_add,     "add",      0 },
+    {   op_sub,     "sub",      0 },
+    {   op_mul,     "mul",      0 },
+    {   op_div,     "div",      0 },
+    {   op_mod,     "mod",      0 },
+
+    {   op_saynum,  "saynum",   0 },
+
+    {   op_jump,    "jump",     0 },
+    {   op_jumprel, "jumprel",  0 },
+    {   op_jz,      "jz",       0 },
+    {   op_jnz,     "jnz",      0 },
+    {   op_bad,     NULL,       0 }
 };
 
 
@@ -90,6 +92,19 @@ static int add_label(struct label_def **first_lbl, const char *name, int pos) {
     return 1;
 }
 
+static struct label_def* get_label(struct label_def *first, const char *name) {
+    struct label_def *current = first;
+    
+    while (current) {
+        if (strcmp(name, current->name) == 0) {
+            return current;
+        }
+        current = current->next;
+    }
+    
+    return NULL;
+}
+
 static void dump_labels(struct label_def *first) {
     struct label_def *cur = first;
     while (cur) {
@@ -113,6 +128,12 @@ int parse_tokens(struct token_list *list) {
     int code_pos = 0;
     int done_initial = 0;
     struct label_def *first_lbl = NULL;
+
+    FILE *out = fopen("output.bc", "wb");
+    if (!out) {
+        printf("could not open output file\n");
+        return 0;
+    }
 
     struct token *here = list->first;
     while (here) {
@@ -157,11 +178,66 @@ int parse_tokens(struct token_list *list) {
             continue;
         }
 
-        printf("tok %s\n", here->text);
-        code_pos += 4;
+        printf("0x%08X %s/%d", code_pos, here->text, m->opcode);
+        fputc(m->opcode, out);
+        code_pos += 1;
+        
+        if (here->next && here->next->type != tt_eol) {
+            if (m->operand_size == 0) {
+                parse_error(here, "expected operand");
+                skip_line(&here);
+                continue;
+            }
+            
+            struct label_def *label;
+            struct token *operand = here->next;
+            int op_value = 0;
+            switch (operand->type) {
+                case tt_integer:
+                    op_value = operand->i;
+                    break;
+                case tt_identifier:
+                    label = get_label(first_lbl, operand->text);
+                    if (label) {
+                        op_value = label->pos;
+                    } else {
+                        op_value = -1;
+                    }
+                    break;
+                default:
+                    parse_error(operand, "bad operand type");
+                    skip_line(&here);
+                    continue;
+            }
+            
+            switch(m->operand_size) {
+                case 1:
+                    fputc(op_value, out);
+                    break;
+                case 2: {
+                    short v = op_value;
+                    fwrite(&v, 2, 1, out);
+                    break; }
+                case 4:
+                    fwrite(&op_value, 4, 1, out);
+                    break;
+                default:
+                    parse_error(operand, "(assembler) bad operand size");
+            }
+            printf("  op/%d: %d", m->operand_size, op_value);
+            code_pos += m->operand_size;
+        } else if (m->operand_size > 0) {
+            parse_error(here, "unknown mnemonic");
+            skip_line(&here);
+            continue;
+        }
+        printf("\n");
+        
         skip_line(&here);
     }
 
+    fclose(out);
+    printf("\nLABELS\n");
     dump_labels(first_lbl);
     free_labels(first_lbl);
     return !has_errors;

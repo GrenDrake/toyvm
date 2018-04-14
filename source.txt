@@ -1,17 +1,17 @@
 .export start
 
 start:
-    loadi   0   10
+    pushb    10
 loop:
-    saynum  0
-    loadi   1   1
-    sub     0   1   0
-    jnz     0   loop
+    stkdup
+    saynum
+    pushb    1
+    sub
+    stkdup
+    pushw    loop
+    jnz
 
-    loadwi  0   0
-    saynum  0
+    pushb    0
+    saynum
 
-    loadi   0   4
-    loadwr  5   4
-    saynum  5
     exit

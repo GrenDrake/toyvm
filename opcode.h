@@ -3,20 +3,29 @@
 
 enum opcode {
     op_exit,
-    op_loadi,
+
+    op_stkdup,
+
+    op_pushb,
+    op_pushs,
+    op_pushw,
+    op_readb,
+    op_reads,
+    op_readw,
+
     op_add,
-    op_saynum,
-    op_jump,
-    op_jz,
-    op_jnz,
     op_sub,
-    op_jumprel,
     op_mul,
     op_div,
     op_mod,
-    op_loadwi,
-    op_loadwr,
-    
+
+    op_saynum,
+
+    op_jump,
+    op_jumprel,
+    op_jz,
+    op_jnz,
+
     op_bad = -1
 };
 

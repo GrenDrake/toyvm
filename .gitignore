@@ -1,4 +1,4 @@
 *.o
 assemble
 toyvm
-
+output.bc

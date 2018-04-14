@@ -2,6 +2,31 @@
 #include <stdlib.h>
 
 #include "toyvm.h"
+#include "opcode.h"
+
+static inline void vm_stk_push(struct vmstate *vm, int value) {
+    *vm->stack_ptr = value;
+    ++vm->stack_ptr;
+}
+static inline int vm_stk_size(struct vmstate *vm) {
+    return vm->stack_ptr - vm->stack;
+}
+static inline int vm_stk_peek(struct vmstate *vm, int pos) {
+    return *(vm->stack_ptr - pos);
+} 
+static inline int vm_stk_pop(struct vmstate *vm) {
+    --vm->stack_ptr;
+    return *vm->stack_ptr;
+} 
+static inline void vm_stk_set(struct vmstate *vm, int pos, int val) {
+    *(vm->stack_ptr - pos) = val;
+} 
+
+#define MIN_STACK(vm, min_size) \
+    if (vm_stk_size(vm) < min_size) { \
+        fprintf(stderr, "stack underflow\n"); \
+        return 0; \
+    }
 
 unsigned vm_read_word(unsigned char *memory, unsigned address);
 
@@ -21,12 +46,14 @@ unsigned vm_read_word(unsigned char *memory, unsigned address) {
 
 
 int vm_init_memory(struct vmstate *vm, unsigned memory_size, unsigned char *memory_source) {
-    for (int i = 0; i < REGISTER_COUNT; ++i) {
-        vm->reg[i] = 0;
-    }
     vm->fixed_memory = memory_source;
     vm->memory_size = memory_size;
-    return 1;
+    
+    vm->stack_size = 512;
+    vm->stack = malloc(vm->stack_size);
+    vm->stack_ptr = vm->stack;
+
+    return vm->stack != NULL;
 }
 
 int vm_run(struct vmstate *vm, unsigned start_address) {
@@ -34,7 +61,7 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
         return 0;
     }
 
-    unsigned full_code, opcode, limmed, simmed, r1, r2, r3;
+    unsigned opcode, operand;
     int pc = start_address;
     while (1) {
         if (pc >= vm->memory_size) {
@@ -44,72 +71,57 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
             return 0;
         }
 
-        full_code = vm_read_word(vm->fixed_memory, pc);
-        opcode = (full_code & 0xFF000000) >> 24;
-        limmed = (full_code & 0x00FFFFFF);
-        simmed = (full_code & 0x0000FFFF);
-        r1     = (full_code & 0x00FF0000) >> 16;
-        r2     = (full_code & 0x0000FF00) >> 8;
-        r3     = (full_code & 0x000000FF);
-
-        pc += 4;
+        opcode = vm->fixed_memory[pc++];
         switch(opcode) {
-            case OP_EXIT:
+            case op_exit:
                 return 1;
-            case OP_LOADI:
-                vm->reg[r1] = simmed;
-                break;
-            case OP_LOADWI:
-                vm->reg[r1] = vm_read_word(vm->fixed_memory, simmed);
-                break;
-            case OP_LOADWR:
-                vm->reg[r1] = vm_read_word(vm->fixed_memory, vm->reg[r2]);
+
+            case op_stkdup:
+                MIN_STACK(vm, 1);
+                vm_stk_push(vm, vm_stk_peek(vm, 1));
                 break;
 
-            case OP_ADD:
-                vm->reg[r3] = vm->reg[r1] + vm->reg[r2];
+            case op_pushb:
+                vm_stk_push(vm, vm->fixed_memory[pc++]);
                 break;
-            case OP_SUB:
-                vm->reg[r3] = vm->reg[r1] - vm->reg[r2];
+            case op_pushs:
+                operand = vm->fixed_memory[pc++];
+                operand |= vm->fixed_memory[pc++] << 8;
+                vm_stk_push(vm, operand);
                 break;
-            case OP_MUL:
-                vm->reg[r3] = vm->reg[r1] * vm->reg[r2];
-                break;
-            case OP_DIV:
-                vm->reg[r3] = vm->reg[r1] / vm->reg[r2];
-                break;
-            case OP_MOD:
-                vm->reg[r3] = vm->reg[r1] % vm->reg[r2];
-                break;
-
-            case OP_SAYNUM:
-                printf("number is %d\n", vm->reg[r1]);
+            case op_pushw:
+                operand = vm->fixed_memory[pc++];
+                operand |= vm->fixed_memory[pc++] << 8;
+                operand |= vm->fixed_memory[pc++] << 16;
+                operand |= vm->fixed_memory[pc++] << 24;
+                vm_stk_push(vm, operand);
                 break;
 
-            case OP_JUMP:
-                pc = limmed;
+            case op_sub:
+                MIN_STACK(vm, 2);
+
+                vm_stk_set(vm, 2, vm_stk_peek(vm, 2) - vm_stk_peek(vm, 1));
+                vm_stk_pop(vm);
                 break;
-            case OP_JUMPREL:
-                if (limmed & 0x800000) limmed |= 0xFF000000;
-                pc += (signed)limmed;
+
+            case op_saynum:
+                MIN_STACK(vm, 1);
+                printf("%d\n", vm_stk_pop(vm));
                 break;
-            case OP_JUMPZ:
-                if (simmed & 0x8000) simmed |= 0xFFFF0000;
-                if (vm->reg[r1] == 0) {
-                    pc += (signed)simmed;
+
+            case op_jnz:
+                MIN_STACK(vm, 2);
+
+                if (vm_stk_peek(vm, 2) != 0) {
+                    pc = vm_stk_peek(vm, 1);
                 }
-                break;
-            case OP_JUMPNZ:
-                if (simmed & 0x8000) simmed |= 0xFFFF0000;
-                if (vm->reg[r1] != 0) {
-                    pc += (signed)simmed;
-                }
+                vm->stack_ptr -= 2;
                 break;
 
             default:
                 fprintf(stderr,
                         "Tried to execute unknown instruction 0x%X at address 0x%08X.\n",
-                        opcode, pc - 4);
+                        opcode, pc-1);
                 return 0;
         }
     }

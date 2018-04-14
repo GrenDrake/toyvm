@@ -4,30 +4,35 @@
 #include "toyvm.h"
 
 
-unsigned char test_memory[] = {
-    OP_LOADI,   0, 0, 10,
-    OP_SAYNUM,  0, 0, 0,
-    OP_LOADI,   1, 0, 1,
-    OP_SUB,     0, 1, 0,
-    OP_JUMPNZ,  0, 0xFF, 0xF0,
-
-    OP_LOADWI,  0, 0, 0,
-    OP_SAYNUM,  0, 0, 0,
-
-    OP_LOADI,   4, 0, 4,
-    OP_LOADWR,  5, 4, 0,
-    OP_SAYNUM,  5, 0, 0,
-
-    OP_EXIT,    0, 0, 0,
-};
-
 
 int main() {
     struct vmstate vm;
+    
+    FILE *in = fopen("output.bc", "rb");
+    if (!in) {
+        fprintf(stderr, "could not open vm image.\n");
+        return 1;
+    }
+    fseek(in, 0, SEEK_END);
+    unsigned filesize = ftell(in);
+    rewind(in);
 
-    vm_init_memory(&vm, sizeof(test_memory), test_memory);
-    vm_run(&vm, 0);
+    unsigned char *memory = malloc(filesize);
+    if (!memory) {
+        fclose(in);
+        fprintf(stderr, "memory allocation failed.\n");
+        return 1;
+    }
+
+    fread(memory, filesize, 1, in);
+    fclose(in);
+
+    vm_init_memory(&vm, filesize, memory);
+    if (!vm_run(&vm, 0)) {
+        fprintf(stderr, "vm error occured.\n");
+    }
     vm_free(&vm);
 
+    free(memory);
     return 0;
 }
