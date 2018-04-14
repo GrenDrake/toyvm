@@ -226,7 +226,8 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
     }
 
     // write header info
-    fseek(out, 4, SEEK_SET);
+    fseek(out, 0, SEEK_SET);
+    fwrite("TVM", 4, 1, out);
     struct label_def *label = get_label(first_lbl, "start");
     if (label) {
         unsigned start_address = label->pos;
