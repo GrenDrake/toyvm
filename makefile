@@ -1,7 +1,7 @@
 OBJS=toyvm.o vmcore.o
 TARGET=~/toyvm
 
-AOBJS=assemble.o assem_tokens.o assem_build.o utility.o
+AOBJS=assemble.o assem_tokens.o assem_build.o assem_labels.o utility.o
 ATARGET=~/assemble
 
 CC=gcc

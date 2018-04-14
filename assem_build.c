@@ -5,25 +5,8 @@
 #include "assemble.h"
 #include "opcode.h"
 
-#define HEADER_SIZE 12
-
-struct label_def {
-    char *name;
-    int pos;
-    struct label_def *next;
-};
-
-struct mnemonic {
-    int opcode;
-    const char *name;
-    int operand_size;
-};
-
 static void skip_line(struct token **current);
 static void parse_error(struct token *where, const char *err_msg);
-static int add_label(struct label_def **first_lbl, const char *name, int pos);
-static void dump_labels(struct label_def *first);
-static void free_labels(struct label_def *first);
 
 struct mnemonic mnemonics[] = {
     {   op_exit,    "exit",     0 },
@@ -75,56 +58,6 @@ static void parse_error(struct token *where, const char *err_msg) {
            where->line,
            where->column,
            err_msg);
-}
-
-static int add_label(struct label_def **first_lbl, const char *name, int pos) {
-    struct label_def *cur = *first_lbl;
-
-    struct label_def *new_lbl = malloc(sizeof(struct label_def));
-    if (!new_lbl) {
-        return 0;
-    }
-    new_lbl->name = str_dup(name);
-    new_lbl->pos = pos;
-
-    if (cur == NULL) {
-        new_lbl->next = NULL;
-    } else {
-        new_lbl->next = cur;
-    }
-    *first_lbl = new_lbl;
-    return 1;
-}
-
-static struct label_def* get_label(struct label_def *first, const char *name) {
-    struct label_def *current = first;
-    
-    while (current) {
-        if (strcmp(name, current->name) == 0) {
-            return current;
-        }
-        current = current->next;
-    }
-    
-    return NULL;
-}
-
-static void dump_labels(struct label_def *first) {
-    struct label_def *cur = first;
-    while (cur) {
-        printf("0x%08X  %s\n", cur->pos, cur->name);
-        cur = cur->next;
-    }
-}
-
-static void free_labels(struct label_def *first) {
-    struct label_def *cur = first;
-    while (cur) {
-        struct label_def *next = cur->next;
-        free(cur->name);
-        free(cur);
-        cur = next;
-    }
 }
 
 int parse_tokens(struct token_list *list) {
