@@ -60,13 +60,13 @@ static void parse_error(struct token *where, const char *err_msg) {
            err_msg);
 }
 
-int parse_tokens(struct token_list *list) {
+int parse_tokens(struct token_list *list, const char *output_filename) {
     int has_errors = 0;
     int code_pos = 0;
     int done_initial = 0;
     struct label_def *first_lbl = NULL;
 
-    FILE *out = fopen("output.bc", "wb+");
+    FILE *out = fopen(output_filename, "wb+");
     if (!out) {
         printf("could not open output file\n");
         return 0;
