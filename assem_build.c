@@ -106,7 +106,9 @@ int parse_tokens(struct token_list *list) {
         done_initial = 1;
 
         if (here->next && here->next->type == tt_colon) {
-            add_label(&first_lbl, here->text, code_pos);
+            if (!add_label(&first_lbl, here->text, code_pos)) {
+                parse_error(here, "could not create label (already exists?)");
+            }
             here = here->next->next;
             continue;
         }

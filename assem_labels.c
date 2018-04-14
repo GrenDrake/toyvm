@@ -7,6 +7,11 @@
 int add_label(struct label_def **first_lbl, const char *name, int pos) {
     struct label_def *cur = *first_lbl;
 
+    struct label_def *existing = get_label(*first_lbl, name);
+    if (existing) {
+        return 0;
+    }
+
     struct label_def *new_lbl = malloc(sizeof(struct label_def));
     if (!new_lbl) {
         return 0;
