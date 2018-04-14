@@ -8,6 +8,8 @@
 static void skip_line(struct token **current);
 static void parse_error(struct token *where, const char *err_msg);
 
+static int data_string(FILE *out, struct token *first, int *code_pos);
+
 struct mnemonic mnemonics[] = {
     {   op_exit,    "exit",     0 },
     
@@ -59,6 +61,27 @@ static void parse_error(struct token *where, const char *err_msg) {
            where->column,
            err_msg);
 }
+
+static int data_string(FILE *out, struct token *first, int *code_pos) {
+    struct token *here = first->next;
+
+    if (here->type != tt_string) {
+        parse_error(here, "expected string");
+        return 0;
+    }
+    
+    printf("0x%08X string ~%s~\n", *code_pos, here->text);
+    int pos = 0;
+    while (here->text[pos] != 0) {
+        fputc(here->text[pos], out);
+        ++pos;
+    }
+    fputc(0, out);
+    *code_pos += pos + 1;
+    skip_line(&here);
+    return 1;
+}
+
 
 int parse_tokens(struct token_list *list, const char *output_filename) {
     int has_errors = 0;
@@ -114,21 +137,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         }
 
         if (strcmp(here->text, ".string") == 0) {
-            here = here->next;
-            if (here->type != tt_string) {
-                parse_error(here, "expected string");
-                skip_line(&here);
-                continue;
-            }
-            
-            printf("0x%08X string ~%s~\n", code_pos, here->text);
-            int pos = 0;
-            while (here->text[pos] != 0) {
-                fputc(here->text[pos], out);
-                ++pos;
-            }
-            fputc(0, out);
-            code_pos += pos + 1;
+            data_string(out, here, &code_pos);
             skip_line(&here);
             continue;
         }
