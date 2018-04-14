@@ -82,6 +82,26 @@ static int data_string(FILE *out, struct token *first, int *code_pos) {
     return 1;
 }
 
+static int data_bytes(FILE *out, struct token *first, int *code_pos, int width) {
+    struct token *here = first->next;
+    printf("0x%08X data(%d)", *code_pos, width);
+
+    while (here && here->type != tt_eol) {
+        if (here->type != tt_integer) {
+            printf("\n");
+            parse_error(here, "expected integer");
+            return 0;
+        }
+        
+        printf(" %d", here->i);
+        fwrite(&here->i, width, 1, out);
+        *code_pos += width;
+        here = here->next;
+    }
+    printf("\n");
+    return 1;
+}
+
 
 int parse_tokens(struct token_list *list, const char *output_filename) {
     int has_errors = 0;
@@ -143,24 +163,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         }
         
         if (strcmp(here->text, ".byte") == 0) {
-            here = here->next;
-            printf("0x%08X bytes", code_pos);
-
-            int found_error = 0;
-            while (!found_error && here && here->type != tt_eol) {
-                if (here->type != tt_integer) {
-                    printf("\n");
-                    parse_error(here, "expected integer");
-                    found_error = 1;
-                    continue;
-                }
-                
-                printf(" %d", here->i % 256);
-                fputc(here->i, out);
-                ++code_pos;
-                here = here->next;
-            }
-            printf("\n");
+            data_bytes(out, here, &code_pos, 1);
             skip_line(&here);
             continue;
         }
