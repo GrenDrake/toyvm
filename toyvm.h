@@ -14,4 +14,8 @@ int vm_init_memory(struct vmstate *vm, unsigned memory_size, unsigned char *memo
 int vm_run(struct vmstate *vm, unsigned start_address);
 int vm_free(struct vmstate *vm);
 
+int vm_read_byte(struct vmstate *vm, unsigned address);
+int vm_read_short(struct vmstate *vm, unsigned address);
+int vm_read_word(struct vmstate *vm, unsigned address);
+
 #endif

@@ -12,6 +12,13 @@ loop:
     jnz
 
     pushb    0
+    readw
+    saynum
+    pushb    0
+    reads
+    saynum
+    pushb    0
+    readb
     saynum
 
     exit

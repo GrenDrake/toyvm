@@ -28,22 +28,6 @@ static inline void vm_stk_set(struct vmstate *vm, int pos, int val) {
         return 0; \
     }
 
-unsigned vm_read_word(unsigned char *memory, unsigned address);
-
-
-
-
-unsigned vm_read_word(unsigned char *memory, unsigned address) {
-    unsigned word = 0;
-    word |= memory[address]     << 24;
-    word |= memory[address + 1] << 16;
-    word |= memory[address + 2] << 8;
-    word |= memory[address + 3];
-    return word;
-}
-
-
-
 
 int vm_init_memory(struct vmstate *vm, unsigned memory_size, unsigned char *memory_source) {
     vm->fixed_memory = memory_source;
@@ -95,6 +79,18 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
                 operand |= vm->fixed_memory[pc++] << 16;
                 operand |= vm->fixed_memory[pc++] << 24;
                 vm_stk_push(vm, operand);
+                break;
+            case op_readb:
+                MIN_STACK(vm, 1);
+                vm_stk_push(vm, vm_read_byte(vm, vm_stk_pop(vm)));
+                break;
+            case op_reads:
+                MIN_STACK(vm, 1);
+                vm_stk_push(vm, vm_read_short(vm, vm_stk_pop(vm)));
+                break;
+            case op_readw:
+                MIN_STACK(vm, 1);
+                vm_stk_push(vm, vm_read_word(vm, vm_stk_pop(vm)));
                 break;
 
             case op_add:
@@ -151,3 +147,24 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
 int vm_free(struct vmstate *vm) {
     return 1;
 }
+
+int vm_read_byte(struct vmstate *vm, unsigned address) {
+    return vm->fixed_memory[address];
+}
+
+int vm_read_short(struct vmstate *vm, unsigned address) {
+    unsigned word = 0;
+    word |= vm->fixed_memory[address];
+    word |= vm->fixed_memory[address + 1] << 8;
+    return word;
+}
+
+int vm_read_word(struct vmstate *vm, unsigned address) {
+    unsigned word = 0;
+    word |= vm->fixed_memory[address];
+    word |= vm->fixed_memory[address + 1] << 8;
+    word |= vm->fixed_memory[address + 2] << 16;
+    word |= vm->fixed_memory[address + 3] << 24;
+    return word;
+}
+
