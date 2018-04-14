@@ -1,6 +1,11 @@
 .export start
 
+some_bytes:
     .byte 1 2 3 4 99 256
+a_short:
+    .short 256
+a_word:
+    .word 1000000
 hello_msg:
     .string "Hello world!"
 
@@ -24,18 +29,18 @@ loop:
     pushb    10
     saychar
 
-    pushb    0
-    readw
+    pushw    some_bytes
+    readb
     saynum
     pushb    10
     saychar
-    pushb    0
+    pushw    a_short
     reads
     saynum
     pushb    10
     saychar
-    pushb    0
-    readb
+    pushw    a_word
+    readw
     saynum
     pushb    10
     saychar

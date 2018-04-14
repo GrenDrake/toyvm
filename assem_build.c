@@ -167,6 +167,16 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
             skip_line(&here);
             continue;
         }
+        if (strcmp(here->text, ".short") == 0) {
+            data_bytes(out, here, &code_pos, 2);
+            skip_line(&here);
+            continue;
+        }
+        if (strcmp(here->text, ".word") == 0) {
+            data_bytes(out, here, &code_pos, 4);
+            skip_line(&here);
+            continue;
+        }
 
 
         struct mnemonic *m = mnemonics;
