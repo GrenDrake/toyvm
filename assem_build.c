@@ -14,7 +14,7 @@ static int data_bytes(FILE *out, struct token *first, int *code_pos, int width);
 
 struct mnemonic mnemonics[] = {
     {   op_exit,    "exit",     0 },
-    
+
     {   op_stkdup,  "stkdup",   0 },
 
     {   op_pushb,   "pushb",    1 },
@@ -71,8 +71,10 @@ static int data_string(FILE *out, struct token *first, int *code_pos) {
         parse_error(here, "expected string");
         return 0;
     }
-    
+
+#ifdef DEBUG
     printf("0x%08X string ~%s~\n", *code_pos, here->text);
+#endif
     int pos = 0;
     while (here->text[pos] != 0) {
         fputc(here->text[pos], out);
@@ -91,8 +93,10 @@ static int data_zeroes(FILE *out, struct token *first, int *code_pos) {
         parse_error(here, "expected integer");
         return 0;
     }
-    
+
+#ifdef DEBUG
     printf("0x%08X zeroes (%d)\n", *code_pos, here->i);
+#endif
     for (int i = 0; i < here->i; ++i) {
         fputc(0, out);
     }
@@ -103,7 +107,9 @@ static int data_zeroes(FILE *out, struct token *first, int *code_pos) {
 
 static int data_bytes(FILE *out, struct token *first, int *code_pos, int width) {
     struct token *here = first->next;
+#ifdef DEBUG
     printf("0x%08X data(%d)", *code_pos, width);
+#endif
 
     while (here && here->type != tt_eol) {
         if (here->type != tt_integer) {
@@ -111,13 +117,17 @@ static int data_bytes(FILE *out, struct token *first, int *code_pos, int width) 
             parse_error(here, "expected integer");
             return 0;
         }
-        
+
+#ifdef DEBUG
         printf(" %d", here->i);
+#endif
         fwrite(&here->i, width, 1, out);
         *code_pos += width;
         here = here->next;
     }
+#ifdef DEBUG
     printf("\n");
+#endif
     return 1;
 }
 
@@ -164,7 +174,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 continue;
             }
         }
-        
+
         done_initial = 1;
 
         if (here->next && here->next->type == tt_colon) {
@@ -180,7 +190,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
             skip_line(&here);
             continue;
         }
-        
+
         if (strcmp(here->text, ".byte") == 0) {
             data_bytes(out, here, &code_pos, 1);
             skip_line(&here);
@@ -201,7 +211,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
             skip_line(&here);
             continue;
         }
-        
+
         if (strcmp(here->text, ".include") == 0) {
             here = here->next;
             if (here->type != tt_string) {
@@ -235,17 +245,19 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
             continue;
         }
 
+#ifdef DEBUG
         printf("0x%08X %s/%d", code_pos, here->text, m->opcode);
+#endif
         fputc(m->opcode, out);
         code_pos += 1;
-        
+
         if (here->next && here->next->type != tt_eol) {
             if (m->operand_size == 0) {
                 parse_error(here, "expected operand");
                 skip_line(&here);
                 continue;
             }
-            
+
             struct label_def *label;
             struct token *operand = here->next;
             int op_value = 0;
@@ -266,7 +278,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                     skip_line(&here);
                     continue;
             }
-            
+
             switch(m->operand_size) {
                 case 1:
                     fputc(op_value, out);
@@ -281,15 +293,19 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 default:
                     parse_error(operand, "(assembler) bad operand size");
             }
+#ifdef DEBUG
             printf("  op/%d: %d", m->operand_size, op_value);
+#endif
             code_pos += m->operand_size;
         } else if (m->operand_size > 0) {
             parse_error(here, "unknown mnemonic");
             skip_line(&here);
             continue;
         }
+#ifdef DEBUG
         printf("\n");
-        
+#endif
+
         skip_line(&here);
     }
 
@@ -306,8 +322,10 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
 
 
     fclose(out);
+#ifdef DEBUG
     printf("\nLABELS\n");
     dump_labels(first_lbl);
+#endif
     free_labels(first_lbl);
     return !has_errors;
 }
