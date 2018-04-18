@@ -8,15 +8,14 @@ a_short:
 a_word:
     .word 1000000
 hello_msg:
-    .string "Hello world!"
+    .string "\"Hello world\"!\n"
+    .string "test me"
 
     .include "glk.a"
 
 start:
     pushw    hello_msg
     saystr
-    pushb    10
-    saychar
 
     pushb    10
 loop:

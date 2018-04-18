@@ -123,6 +123,31 @@ static int is_identifier(int ch) {
     return isalnum(ch) || ch == '.' || ch == '_';
 }
 
+static int string_escapes(char *text) {
+    size_t length = strlen(text);
+    for (size_t i = 0; i < length; ++i) {
+        if (text[i] != '\\') continue;
+        
+        ++i;
+        switch(text[i]) {
+            case '"':
+            case '\'':
+                text[i - 1] = text[i];
+                break;
+            case 'n':
+                text[i - 1] = '\n';
+                break;
+            default:
+                return i;
+        }
+        
+        for (size_t j = i; j < length; ++j) {
+            text[j] = text[j + 1];
+        }
+    }
+    return 0;
+}
+
 struct token_list* lex_file(const char *filename) {
     struct token_list *tokens = NULL;
     struct token *a_token;
@@ -173,17 +198,23 @@ struct token_list* lex_file(const char *filename) {
                 add_token(tokens, a_token);
             } else if (in == '"') {
                 struct lexer_state start = state;
+                int prev = 0;
                 in = next_char(fp, &state);
                 buf_pos = 0;
-                while (in != '"' && in != EOF) {
+                while ((in != '"' || prev == '\\') && in != EOF) {
                     token_buf[buf_pos] = in;
                     ++buf_pos;
+                    prev = in;
                     in = next_char(fp, &state);
                 }
                 if (in == EOF) {
                     lexer_error(&start, "unterminated string");
                 } else {
                     token_buf[buf_pos] = 0;
+                    if (string_escapes(token_buf)) {
+                        lexer_error(&state, "bad string escape");
+                        has_errors = 1;
+                    }
                     a_token = new_token(tt_string, token_buf, &start);
                     add_token(tokens, a_token);
                     in = next_char(fp, &state);
