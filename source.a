@@ -28,23 +28,23 @@ loop:
     stkdup
     pushw    loop
     jnz
-    pushb    10
+    pushb    '\n'
     saychar
 
     pushw    some_bytes
     readb
     saynum
-    pushb    10
+    pushb    '\n'
     saychar
     pushw    a_short
     reads
     saynum
-    pushb    10
+    pushb    '\n'
     saychar
     pushw    a_word
     readw
     saynum
-    pushb    10
+    pushb    '\n'
     saychar
 
     exit

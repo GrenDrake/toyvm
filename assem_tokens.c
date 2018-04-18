@@ -17,6 +17,7 @@ static int is_identifier(int ch);
 static void lexer_error(struct lexer_state *state, const char *err_text);
 static int next_char(FILE *fp, struct lexer_state *state);
 static struct token* new_token(enum token_type type, const char *text, struct lexer_state *state);
+struct token* new_rawint_token(int value, struct lexer_state *state);
 
 
 struct token* new_token(enum token_type type, const char *text, struct lexer_state *state) {
@@ -44,6 +45,21 @@ struct token* new_token(enum token_type type, const char *text, struct lexer_sta
             return NULL;
         }
     }
+
+    return current;
+}
+
+struct token* new_rawint_token(int value, struct lexer_state *state) {
+    struct token *current = malloc(sizeof(struct token));
+    if (!current) return NULL;
+
+    current->source_file = state->file;
+    current->line = state->line;
+    current->column = state->column;
+    current->next = NULL;
+    current->type = tt_integer;
+    current->text = NULL;
+    current->i = value;
 
     return current;
 }
@@ -216,6 +232,36 @@ struct token_list* lex_file(const char *filename) {
                         has_errors = 1;
                     }
                     a_token = new_token(tt_string, token_buf, &start);
+                    add_token(tokens, a_token);
+                    in = next_char(fp, &state);
+                }
+            } else if (in == '\'') {
+                struct lexer_state start = state;
+                int prev = 0;
+                in = next_char(fp, &state);
+                buf_pos = 0;
+                while ((in != '\'' || prev == '\\') && in != EOF) {
+                    token_buf[buf_pos] = in;
+                    ++buf_pos;
+                    prev = in;
+                    in = next_char(fp, &state);
+                }
+                if (in == EOF) {
+                    lexer_error(&start, "unterminated string");
+                } else if (buf_pos == 0) {
+                    lexer_error(&state, "empty character literal");
+                    has_errors = 1;
+                } else {
+                    token_buf[buf_pos] = 0;
+                    if (string_escapes(token_buf)) {
+                        lexer_error(&state, "bad string escape");
+                        has_errors = 1;
+                    }
+                    if (strlen(token_buf) > 1) {
+                        lexer_error(&state, "character literal contains too long");
+                        has_errors = 1;
+                    }
+                    a_token = new_rawint_token(token_buf[0], &start);
                     add_token(tokens, a_token);
                     in = next_char(fp, &state);
                 }
