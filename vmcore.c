@@ -133,6 +133,14 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
                 vm_stk_set(vm, 2, vm_stk_peek(vm, 2) % vm_stk_peek(vm, 1));
                 vm_stk_pop(vm);
                 break;
+            case op_inc:
+                MIN_STACK(vm, 1);
+                vm_stk_set(vm, 1, vm_stk_peek(vm, 1) + 1);
+                break;
+            case op_dec:
+                MIN_STACK(vm, 1);
+                vm_stk_set(vm, 1, vm_stk_peek(vm, 1) - 1);
+                break;
 
             case op_gets:
                 operand = vm_stk_pop(vm);

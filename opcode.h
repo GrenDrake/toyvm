@@ -21,6 +21,8 @@ enum opcode {
     op_mul,
     op_div,
     op_mod,
+    op_inc,
+    op_dec,
 
     op_gets,
     op_saynum,

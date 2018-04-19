@@ -29,8 +29,7 @@ loop:
     saynum
     pushb    32
     saychar
-    pushb    1
-    sub
+    dec
     stkdup
     pushw    loop
     jnz
@@ -61,8 +60,7 @@ loop:
     pushw    after_str
     saystr
     pushw    input_buf
-    pushb    1
-    add
+    inc
     saystr
     pushb    '~'
     saychar
