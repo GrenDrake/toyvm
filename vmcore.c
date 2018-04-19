@@ -45,7 +45,7 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
         return 0;
     }
 
-    unsigned opcode, operand;
+    unsigned opcode, operand, operand2;
     int pc = start_address;
     while (1) {
         if (pc >= vm->memory_size) {
@@ -134,6 +134,13 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
                 vm_stk_pop(vm);
                 break;
 
+            case op_gets:
+                operand = vm_stk_pop(vm);
+                fgets((char*)&vm->fixed_memory[operand + 1], vm_stk_pop(vm), stdin);
+                operand2 = strlen((char*)&vm->fixed_memory[operand + 1]);
+                vm->fixed_memory[operand] = operand2;
+                vm->fixed_memory[operand + operand2] = 0;
+                break;
             case op_saynum:
                 MIN_STACK(vm, 1);
                 printf("%d", vm_stk_pop(vm));

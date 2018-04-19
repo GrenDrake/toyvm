@@ -10,6 +10,12 @@ a_word:
 hello_msg:
     .string "\"Hello world\"!\n"
     .string "test me"
+input_buf:
+    .zero 32
+prompt_str:
+    .string "\n> "
+after_str:
+    .string "You typed: ~"
 
     .include "glk.a"
 
@@ -44,6 +50,22 @@ loop:
     pushw    a_word
     readw
     saynum
+    pushb    '\n'
+    saychar
+
+    pushw    prompt_str
+    saystr
+    pushb    30
+    pushw    input_buf
+    gets
+    pushw    after_str
+    saystr
+    pushw    input_buf
+    pushb    1
+    add
+    saystr
+    pushb    '~'
+    saychar
     pushb    '\n'
     saychar
 

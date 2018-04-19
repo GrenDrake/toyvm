@@ -22,6 +22,7 @@ enum opcode {
     op_div,
     op_mod,
 
+    op_gets,
     op_saynum,
     op_saychar,
     op_saystr,

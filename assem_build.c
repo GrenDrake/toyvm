@@ -33,6 +33,7 @@ struct mnemonic mnemonics[] = {
     {   op_div,     "div",      0 },
     {   op_mod,     "mod",      0 },
 
+    {   op_gets,    "gets",     0 },
     {   op_saynum,  "saynum",   0 },
     {   op_saychar, "saychar",  0 },
     {   op_saystr,  "saystr",   0 },
