@@ -12,6 +12,9 @@ enum opcode {
     op_readb,
     op_reads,
     op_readw,
+    op_storeb,
+    op_stores,
+    op_storew,
 
     op_add,
     op_sub,

@@ -92,6 +92,21 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
                 MIN_STACK(vm, 1);
                 vm_stk_push(vm, vm_read_word(vm, vm_stk_pop(vm)));
                 break;
+            case op_storeb:
+                MIN_STACK(vm, 2);
+                operand = vm_stk_pop(vm);
+                vm_store_byte(vm, operand, vm_stk_pop(vm));
+                break;
+            case op_stores:
+                MIN_STACK(vm, 2);
+                operand = vm_stk_pop(vm);
+                vm_store_short(vm, operand, vm_stk_pop(vm));
+                break;
+            case op_storew:
+                MIN_STACK(vm, 2);
+                operand = vm_stk_pop(vm);
+                vm_store_word(vm, operand, vm_stk_pop(vm));
+                break;
 
             case op_add:
                 MIN_STACK(vm, 2);
@@ -174,5 +189,21 @@ int vm_read_word(struct vmstate *vm, unsigned address) {
     word |= vm->fixed_memory[address + 2] << 16;
     word |= vm->fixed_memory[address + 3] << 24;
     return word;
+}
+
+void vm_store_byte(struct vmstate *vm, unsigned address, unsigned value) {
+    vm->fixed_memory[address] = value & 0xFF;
+}
+
+void vm_store_short(struct vmstate *vm, unsigned address, unsigned value) {
+    vm->fixed_memory[address]     = value & 0xFF;
+    vm->fixed_memory[address + 1] = (value >> 8) & 0xFF;
+}
+
+void vm_store_word(struct vmstate *vm, unsigned address, unsigned value) {
+    vm->fixed_memory[address]     = value & 0xFF;
+    vm->fixed_memory[address + 1] = (value >> 8)  & 0xFF;
+    vm->fixed_memory[address + 2] = (value >> 16) & 0xFF;
+    vm->fixed_memory[address + 3] = (value >> 24) & 0xFF;
 }
 

@@ -23,6 +23,9 @@ struct mnemonic mnemonics[] = {
     {   op_readb,   "readb",    0 },
     {   op_reads,   "reads",    0 },
     {   op_readw,   "readw",    0 },
+    {   op_storeb,  "storeb",   0 },
+    {   op_stores,  "stores",   0 },
+    {   op_storew,  "storew",   0 },
 
     {   op_add,     "add",      0 },
     {   op_sub,     "sub",      0 },
