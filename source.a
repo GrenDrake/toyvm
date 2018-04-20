@@ -28,7 +28,7 @@ start:
 loop:
     stkdup
     saynum
-    pushb    32
+    pushb    ' '
     saychar
     dec
     stkdup
