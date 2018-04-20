@@ -13,14 +13,14 @@ static inline int vm_stk_size(struct vmstate *vm) {
 }
 static inline int vm_stk_peek(struct vmstate *vm, int pos) {
     return *(vm->stack_ptr - pos);
-} 
+}
 static inline int vm_stk_pop(struct vmstate *vm) {
     --vm->stack_ptr;
     return *vm->stack_ptr;
-} 
+}
 static inline void vm_stk_set(struct vmstate *vm, int pos, int val) {
     *(vm->stack_ptr - pos) = val;
-} 
+}
 
 #define MIN_STACK(vm, min_size) \
     if (vm_stk_size(vm) < min_size) { \
@@ -32,7 +32,7 @@ static inline void vm_stk_set(struct vmstate *vm, int pos, int val) {
 int vm_init_memory(struct vmstate *vm, unsigned memory_size, unsigned char *memory_source) {
     vm->fixed_memory = memory_source;
     vm->memory_size = memory_size;
-    
+
     vm->stack_size = 512;
     vm->stack = malloc(vm->stack_size);
     vm->stack_ptr = vm->stack;
@@ -46,16 +46,16 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
     }
 
     unsigned opcode, operand, operand2;
-    int pc = start_address;
+    unsigned char *pc = &vm->fixed_memory[start_address];
     while (1) {
-        if (pc >= vm->memory_size) {
+        if (pc >= &vm->fixed_memory[vm->memory_size]) {
             fprintf(stderr,
-                    "Tried to execute instruction at 0x%08X which is outside memory sized 0x%08X\n",
-                    pc, vm->memory_size);
+                    "Tried to execute instruction at 0x%08lX which is outside memory sized 0x%08X\n",
+                    pc - vm->fixed_memory, vm->memory_size);
             return 0;
         }
 
-        opcode = vm->fixed_memory[pc++];
+        opcode = *pc++;
         switch(opcode) {
             case op_exit:
                 return 1;
@@ -66,18 +66,18 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
                 break;
 
             case op_pushb:
-                vm_stk_push(vm, vm->fixed_memory[pc++]);
+                vm_stk_push(vm, *pc++);
                 break;
             case op_pushs:
-                operand = vm->fixed_memory[pc++];
-                operand |= vm->fixed_memory[pc++] << 8;
+                operand = *pc++;
+                operand |= (*pc++) << 8;
                 vm_stk_push(vm, operand);
                 break;
             case op_pushw:
-                operand = vm->fixed_memory[pc++];
-                operand |= vm->fixed_memory[pc++] << 8;
-                operand |= vm->fixed_memory[pc++] << 16;
-                operand |= vm->fixed_memory[pc++] << 24;
+                operand = *pc++;
+                operand |= (*pc++) << 8;
+                operand |= (*pc++) << 16;
+                operand |= (*pc++) << 24;
                 vm_stk_push(vm, operand);
                 break;
             case op_readb:
@@ -166,15 +166,15 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
                 MIN_STACK(vm, 2);
 
                 if (vm_stk_peek(vm, 2) != 0) {
-                    pc = vm_stk_peek(vm, 1);
+                    pc = &vm->fixed_memory[vm_stk_peek(vm, 1)];
                 }
                 vm->stack_ptr -= 2;
                 break;
 
             default:
                 fprintf(stderr,
-                        "Tried to execute unknown instruction 0x%X at address 0x%08X.\n",
-                        opcode, pc-1);
+                        "Tried to execute unknown instruction 0x%X at address 0x%08lX.\n",
+                        opcode, pc - vm->fixed_memory);
                 return 0;
         }
     }
