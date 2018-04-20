@@ -218,6 +218,30 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
             continue;
         }
 
+        if (strcmp(here->text, ".define") == 0) {
+            here = here->next;
+            if (here->type != tt_identifier) {
+                parse_error(here, "expected identifier");
+                skip_line(&here);
+                continue;
+            }
+            const char *name = here->text;
+            here = here->next;
+            if (here->type != tt_integer) {
+                parse_error(here, "expected integer");
+                skip_line(&here);
+                continue;
+            }
+
+            if (!add_label(&first_lbl, name, here->i)) {
+                parse_error(here, "error creating constant");
+                skip_line(&here);
+                continue;
+            }
+            skip_line(&here);
+            continue;
+        }
+
         if (strcmp(here->text, ".include") == 0) {
             here = here->next;
             if (here->type != tt_string) {

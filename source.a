@@ -12,6 +12,7 @@ hello_msg:
     .string "test me"
 input_buf:
     .zero 32
+    .define max_input 30
 prompt_str:
     .string "\n> "
 after_str:
@@ -54,7 +55,7 @@ loop:
 
     pushw    prompt_str
     saystr
-    pushb    30
+    pushb    max_input
     pushw    input_buf
     gets
     pushw    after_str
