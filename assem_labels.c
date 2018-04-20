@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,14 +31,14 @@ int add_label(struct label_def **first_lbl, const char *name, int pos) {
 
 struct label_def* get_label(struct label_def *first, const char *name) {
     struct label_def *current = first;
-    
+
     while (current) {
         if (strcmp(name, current->name) == 0) {
             return current;
         }
         current = current->next;
     }
-    
+
     return NULL;
 }
 
