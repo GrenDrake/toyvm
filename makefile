@@ -1,8 +1,8 @@
 OBJS=toyvm.o vmcore.o
-TARGET=~/toyvm
+TARGET=./toyvm
 
 AOBJS=assemble.o assem_tokens.o assem_build.o assem_labels.o utility.o
-ATARGET=~/assemble
+ATARGET=./assemble
 
 CC=gcc
 CFLAGS=-Wall -std=c99 -pedantic
