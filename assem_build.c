@@ -376,6 +376,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         struct label_def *label = get_label(first_lbl, patch->name);
         if (!label) {
             fprintf(stderr, "Undefined symbol %s.\n", patch->name);
+            ++has_errors;
         } else {
             fseek(out, patch->address, SEEK_SET);
             uint32_t v = label->pos;
