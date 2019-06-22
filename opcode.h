@@ -29,6 +29,9 @@ enum opcode {
     op_saychar,
     op_saystr,
 
+    op_call,
+    op_ret,
+
     op_jump,
     op_jumprel,
     op_jz,

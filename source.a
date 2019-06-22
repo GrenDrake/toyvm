@@ -17,12 +17,26 @@ prompt_str:
     .string "\n> "
 after_str:
     .string "You typed: ~"
+another_string:
+    .string "This is a function call.\n"
 
     .include "glk.a"
+
+test_function:
+    pushw 0
+    pushw 0
+    pushw 0
+    pushw   another_string
+    saystr
+    pushb   10
+    ret
 
 start:
     pushw    hello_msg
     saystr
+
+    pushw   test_function
+    call
 
     pushb    10
 loop:

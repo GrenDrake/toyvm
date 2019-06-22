@@ -1,10 +1,20 @@
 #ifndef TOYVM_H_4356346157
 #define TOYVM_H_4356346157
 
+struct vm_frame {
+    int func_addr;
+    int ret_addr;
+
+    struct vm_frame *prev;
+    struct vm_frame *next;
+};
+
 struct vmstate {
     int *stack;
     unsigned stack_size;
     int *stack_ptr;
+    int *frame_ptr;
+    unsigned char *ip;
 
     unsigned char *fixed_memory;
     unsigned memory_size;

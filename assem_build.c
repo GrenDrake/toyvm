@@ -40,6 +40,8 @@ struct mnemonic mnemonics[] = {
     {   op_saychar, "saychar",  0 },
     {   op_saystr,  "saystr",   0 },
 
+    {   op_call,    "call",     0 },
+    {   op_ret,     "ret",      0 },
     {   op_jump,    "jump",     0 },
     {   op_jumprel, "jumprel",  0 },
     {   op_jz,      "jz",       0 },

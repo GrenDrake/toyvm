@@ -34,10 +34,10 @@ int vm_init_memory(struct vmstate *vm, unsigned memory_size, unsigned char *memo
     vm->fixed_memory = memory_source;
     vm->memory_size = memory_size;
 
+    vm->frame_ptr = NULL;
     vm->stack_size = 512;
     vm->stack = malloc(vm->stack_size);
     vm->stack_ptr = vm->stack;
-
     return vm->stack != NULL;
 }
 
@@ -48,6 +48,7 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
 
     unsigned opcode, operand, operand2;
     unsigned char *pc = &vm->fixed_memory[start_address];
+    vm->frame_ptr = vm->stack_ptr;
     while (1) {
         if (pc >= &vm->fixed_memory[vm->memory_size]) {
             fprintf(stderr,
@@ -162,6 +163,23 @@ int vm_run(struct vmstate *vm, unsigned start_address) {
                 MIN_STACK(vm, 1);
                 printf("%s", &vm->fixed_memory[vm_stk_pop(vm)]);
                 break;
+
+            case op_call: {
+                MIN_STACK(vm, 1);
+                int target = vm_stk_pop(vm);
+                vm_stk_push(vm, pc - vm->fixed_memory);
+                vm_stk_push(vm, vm->frame_ptr - vm->stack);
+                pc = &vm->fixed_memory[target];
+                vm->frame_ptr = vm->stack_ptr;
+                break; }
+            case op_ret: {
+                MIN_STACK(vm, 1);
+                int retval = vm_stk_pop(vm);
+                vm->stack_ptr = vm->frame_ptr;
+                vm->frame_ptr = vm->stack + vm_stk_pop(vm);
+                pc = vm->fixed_memory + vm_stk_pop(vm);
+                vm_stk_push(vm, retval);
+                break; }
 
             case op_jnz:
                 MIN_STACK(vm, 2);
