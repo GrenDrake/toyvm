@@ -195,7 +195,36 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 skip_line(&here);
                 continue;
             } else {
-                skip_line(&here);
+                uint32_t count = 0;
+                long countpos = ftell(out);
+                fwrite(&count, 4, 1, out);
+                code_pos += 4;
+
+                here = here->next;
+                while (here && here->type != tt_eol) {
+                    if (here->type != tt_identifier) {
+                        parse_error(here, "Exports must be identifiers.");
+                        ++has_errors;
+                    } else {
+                        if (strlen(here->text) > 16) {
+                            parse_error(here, "Export names must be <= 16 characters.");
+                            ++has_errors;
+                        } else {
+                            char buffer[20] = "";
+                            strcpy(buffer, here->text);
+                            fwrite(buffer, 16, 1, out);
+                            code_pos += 16;
+                            add_patch(ftell(out), here->text);
+                            fwrite(&count, 4, 1, out);
+                            code_pos += 4;
+                            ++count;
+                        }
+                    }
+                    here = here->next;
+                }
+                fseek(out, countpos, SEEK_SET);
+                fwrite(&count, 4, 1, out);
+                fseek(out, 0, SEEK_END);
                 continue;
             }
         }

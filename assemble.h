@@ -3,7 +3,6 @@
 
 #define HEADER_SIZE 12
 
-
 enum token_type {
     tt_bad,
     tt_identifier,

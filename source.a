@@ -1,4 +1,4 @@
-.export start
+.export start test_function abarelyvalidname
 
 some_bytes:
     .byte 1 2 3 4
@@ -21,6 +21,9 @@ another_string:
     .string "This is a function call.\n"
 
     .include "glk.a"
+
+abarelyvalidname:
+    .zero 4
 
 test_function:
     pushw 0
