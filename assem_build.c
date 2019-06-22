@@ -47,6 +47,23 @@ struct mnemonic mnemonics[] = {
     {   op_bad,     NULL,       0 }
 };
 
+struct backpatch {
+    unsigned address;
+    char *name;
+
+    struct backpatch *next;
+};
+
+struct backpatch *patches = NULL;
+
+static void add_patch(unsigned pos, const char *name) {
+    struct backpatch *patch = malloc(sizeof(struct backpatch));
+    if (!patch) return;
+    patch->address = pos;
+    patch->name = str_dup(name);
+    patch->next = patches;
+    patches = patch;
+}
 
 static void skip_line(struct token **current) {
     struct token *here = *current;
@@ -301,6 +318,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                         op_value = label->pos;
                     } else {
                         op_value = -1;
+                        add_patch(ftell(out), operand->text);
                     }
                     break;
                 default:
@@ -350,7 +368,24 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         fprintf(stderr, "missing start label");
     }
 
+    // update backpatches
+    struct backpatch *patch = patches;
+    while (patch) {
+        struct label_def *label = get_label(first_lbl, patch->name);
+        if (!label) {
+            fprintf(stderr, "Undefined symbol %s.\n", patch->name);
+        } else {
+            fseek(out, patch->address, SEEK_SET);
+            uint32_t v = label->pos;
+            fwrite(&v, 4, 1, out);
+        }
+        struct backpatch *next = patch->next;
+        free(patch->name);
+        free(patch);
+        patch = next;
+    }
 
+    // all done writing file
     fclose(out);
 #ifdef DEBUG
     printf("\nLABELS\n");
