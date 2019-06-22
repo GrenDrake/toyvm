@@ -7,7 +7,7 @@
 
 int main() {
     struct vmstate vm;
-    
+
     FILE *in = fopen("output.bc", "rb");
     if (!in) {
         fprintf(stderr, "could not open vm image.\n");
@@ -28,12 +28,19 @@ int main() {
     fclose(in);
 
     vm_init_memory(&vm, filesize, memory);
-    int start_addr = vm_read_word(&vm, 4);
-    if (!vm_run(&vm, start_addr)) {
-        fprintf(stderr, "vm error occured.\n");
+    int start_addr = vm_get_export(&vm, "start");
+    int run_failed = 0;
+    if (start_addr < 0) {
+        fprintf(stderr, "Could not find program start address.\n");
+        run_failed = 1;
+    } else {
+        if (!vm_run(&vm, start_addr)) {
+            fprintf(stderr, "vm error occured.\n");
+            run_failed = 1;
+        }
     }
     vm_free(&vm);
 
     free(memory);
-    return 0;
+    return !run_failed;
 }

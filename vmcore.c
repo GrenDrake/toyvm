@@ -5,6 +5,11 @@
 #include "toyvm.h"
 #include "opcode.h"
 
+#define EXPORT_COUNT_POS    12
+#define EXPORT_FIRST        16
+#define EXPORT_NAME_SIZE    16
+#define EXPORT_SIZE         20
+
 static inline void vm_stk_push(struct vmstate *vm, int value) {
     *vm->stack_ptr = value;
     ++vm->stack_ptr;
@@ -39,6 +44,21 @@ int vm_init_memory(struct vmstate *vm, unsigned memory_size, unsigned char *memo
     vm->stack = malloc(vm->stack_size);
     vm->stack_ptr = vm->stack;
     return vm->stack != NULL;
+}
+
+int vm_get_export(struct vmstate *vm, const char *name) {
+    int export_count = vm_read_word(vm, EXPORT_COUNT_POS);
+    for (int i = 0; i < export_count; ++i) {
+        int pos = EXPORT_FIRST + i * EXPORT_SIZE;
+        char export_name[20] = { 0 };
+        for (int j = 0; j < EXPORT_NAME_SIZE; ++j, ++pos) {
+            export_name[j] = vm->fixed_memory[pos];
+        }
+        if (strcmp(export_name, name) == 0) {
+            return vm_read_word(vm, pos);
+        }
+    }
+    return -1;
 }
 
 int vm_run(struct vmstate *vm, unsigned start_address) {

@@ -21,6 +21,7 @@ struct vmstate {
 };
 
 int vm_init_memory(struct vmstate *vm, unsigned memory_size, unsigned char *memory);
+int vm_get_export(struct vmstate *vm, const char *name);
 int vm_run(struct vmstate *vm, unsigned start_address);
 int vm_free(struct vmstate *vm);
 
