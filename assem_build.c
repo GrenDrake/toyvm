@@ -472,10 +472,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
 
     // all done writing file
     fclose(state.out);
-#ifdef DEBUG
-    printf("\nLABELS\n");
     dump_labels(&state);
-#endif
     free_labels(&state);
     return state.error_count;
 }

@@ -2,3 +2,4 @@
 assemble
 toyvm
 output.bc
+labels.txt
