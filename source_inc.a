@@ -1,0 +1,7 @@
+.zero 12
+
+inc_text:
+    .string "This is in source_inc.a"
+
+.zero 12
+
