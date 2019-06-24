@@ -32,7 +32,7 @@ after_str:
 another_string:
     .string "This is a function call.\n"
 
-    .include "glk.a"
+    .include "source_inc.a"
 
 abarelyvalidname:
     .zero 4
