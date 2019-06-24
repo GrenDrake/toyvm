@@ -28,6 +28,10 @@ int require_type(struct parse_data *state, enum token_type type) {
     fprintf(stderr, "Expected %s, but found %s.\n",
                     type_name(type),
                     type_name(state->here->type));
+
+    while (state->here && state->here->type != tt_eol) {
+        state->here = state->here->next;
+    }
     return 0;
 }
 
@@ -51,8 +55,18 @@ void skip_line(struct token **current) {
     }
 }
 
+void parse_warn(struct parse_data *data, const char *warn_msg) {
+    ++data->error_count;
+    print_location(data->here);
+    printf("(warning) %s\n", warn_msg);
+}
+
 void parse_error(struct parse_data *data, const char *err_msg) {
     ++data->error_count;
     print_location(data->here);
     printf("%s\n", err_msg);
+
+    while (data->here && data->here->type != tt_eol) {
+        data->here = data->here->next;
+    }
 }

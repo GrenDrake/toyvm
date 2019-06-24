@@ -101,6 +101,7 @@ const char* type_name(enum token_type type);
 int require_type(struct parse_data *state, enum token_type type);
 int matches_type(struct parse_data *state, enum token_type type);
 void skip_line(struct token **current);
+void parse_warn(struct parse_data *data, const char *warn_msg);
 void parse_error(struct parse_data *data, const char *err_msg);
 
 struct map_data* map_reader(const char *source_file);

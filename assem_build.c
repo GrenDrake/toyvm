@@ -118,20 +118,23 @@ int data_define(struct parse_data *state) {
     state->here = state->here->next;
     if (state->here->type != tt_identifier) {
         parse_error(state, "expected identifier");
-        skip_line(&state->here);
         return 0;
     }
+
     const char *name = state->here->text;
+    if (get_label(state, name)) {
+        parse_error(state, "name already in use");
+        return 0;
+    }
+
     state->here = state->here->next;
     if (state->here->type != tt_integer) {
         parse_error(state, "expected integer");
-        skip_line(&state->here);
         return 0;
     }
 
     if (!add_label(state, name, state->here->i)) {
         parse_error(state, "error creating constant");
-        skip_line(&state->here);
         return 0;
     }
     skip_line(&state->here);
@@ -150,7 +153,7 @@ int data_export(struct parse_data *state) {
 
             if (strlen(state->here->text) > 16) {
                 strncpy(buffer, state->here->text, 16);
-                parse_error(state, "Label longer than 16 characters; export name truncated.");
+                parse_warn(state, "Label longer than 16 characters; export name truncated.");
             } else {
                 strcpy(buffer, state->here->text);
             }
@@ -187,8 +190,12 @@ int data_string(struct parse_data *state) {
 }
 
 int data_mapdata(struct parse_data *state) {
-    if (!add_label(state, "mapdata", state->code_pos)) {
+    if (get_label(state, "mapdata")) {
+        parse_error(state, "mapdata label already exists");
+        return 0;
+    } else if (!add_label(state, "mapdata", state->code_pos)) {
         parse_error(state, "could not create label for mapdata (already exists?)");
+        return 0;
     }
 
     state->here = state->here->next;
@@ -198,6 +205,7 @@ int data_mapdata(struct parse_data *state) {
     struct map_data *data = map_reader(state->here->text);
     if (!data) {
         parse_error(state, "Failed to read mapdata.");
+        return 0;
     } else {
         // write data
         write_short(state, data->width);
@@ -278,14 +286,12 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
 
         if (state.here->type != tt_identifier) {
             parse_error(&state, "expected identifier");
-            skip_line(&state.here);
             continue;
         }
 
         if (strcmp(state.here->text, ".export") == 0) {
             if (done_initial) {
                 parse_error(&state, ".export must precede other statements");
-                skip_line(&state.here);
                 continue;
             }
             data_export(&state);
@@ -295,7 +301,6 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         if (strcmp(state.here->text, ".tileinfo") == 0) {
             if (done_initial) {
                 parse_error(&state, ".tileinfo must precede other statements except exports");
-                skip_line(&state.here);
                 continue;
             }
             data_tileinfo(&state);
@@ -305,7 +310,6 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         if (strcmp(state.here->text, ".mapdata") == 0) {
             if (done_initial) {
                 parse_error(&state, ".mapdata must precede other statements except exports");
-                skip_line(&state.here);
                 continue;
             }
             data_mapdata(&state);
@@ -315,10 +319,13 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         done_initial = 1;
 
         if (state.here->next && state.here->next->type == tt_colon) {
-            if (!add_label(&state, state.here->text, state.code_pos)) {
-                parse_error(&state, "could not create label (already exists?)");
+            if (get_label(&state, state.here->text)) {
+                parse_error(&state, "label already defined");
+            } else if (!add_label(&state, state.here->text, state.code_pos)) {
+                parse_error(&state, "could not create label");
+            } else {
+                state.here = state.here->next->next;
             }
-            state.here = state.here->next->next;
             continue;
         }
 
@@ -353,7 +360,6 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
             state.here = state.here->next;
             if (state.here->type != tt_string) {
                 parse_error(&state, "expected string");
-                skip_line(&state.here);
                 continue;
             }
 
@@ -378,7 +384,6 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         }
         if (m->name == NULL) {
             parse_error(&state, "unknown mnemonic");
-            skip_line(&state.here);
             continue;
         }
 
@@ -390,7 +395,6 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         if (state.here->next && state.here->next->type != tt_eol) {
             if (m->operand_size == 0) {
                 parse_error(&state, "expected operand");
-                skip_line(&state.here);
                 continue;
             }
 
@@ -412,7 +416,6 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                     break;
                 default:
                     parse_error(&state, "bad operand type");
-                    skip_line(&state.here);
                     continue;
             }
 
@@ -436,7 +439,6 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
             state.code_pos += m->operand_size;
         } else if (m->operand_size > 0) {
             parse_error(&state, "unknown mnemonic");
-            skip_line(&state.here);
             continue;
         }
 #ifdef DEBUG
