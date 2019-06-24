@@ -28,6 +28,12 @@ int main() {
     fclose(in);
 
     vm_init_memory(&vm, filesize, memory);
+
+    int map_addr = vm_get_export(&vm, "mapdata");
+    int w = vm_read_short(&vm, map_addr);
+    int h = vm_read_short(&vm, map_addr + 2);
+    printf("Map Size: %dx%d (%d bytes)\nMap Data Start: 0x%X\n\n", w, h, w*h, map_addr + 4);
+
     int start_addr = vm_get_export(&vm, "start");
     int run_failed = 0;
     if (start_addr < 0) {

@@ -1,6 +1,16 @@
-.export start test_function abarelyvalidname
+.export start mapdata test_function abarelyvalidname some_bytes
 
+
+.tileinfo 'T' 1
+.tileinfo '.' 2
+.tileinfo ',' 3
+.tileinfo '-' 4
+.tileinfo '#' 5
+.tileinfo '+' 6
+.tileinfo '~' 7
+.tileinfo '!' 8
 .mapdata "source.map"
+
 
 some_bytes:
     .byte 1 2 3 4

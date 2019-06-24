@@ -71,6 +71,7 @@ struct backpatch {
 };
 
 struct backpatch *patches = NULL;
+char tileMapping[256] = { 0 };
 
 void str_trim(char *str) {
     if (!str) return;
@@ -313,12 +314,43 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
             }
         }
 
+        if (strcmp(here->text, ".tileinfo") == 0) {
+            if (done_initial) {
+                parse_error(here, ".tileinfo must precede other statements except exports");
+                ++has_errors;
+                skip_line(&here);
+                continue;
+            }
+
+            here = here->next;
+            if (!here || here->type != tt_integer) {
+                parse_error(here, "Expected map tile character.");
+                ++has_errors;
+                continue;
+            }
+            int mapChar = here->i;
+
+            here = here->next;
+            if (!here || here->type != tt_integer) {
+                parse_error(here, "Expected map tile value.");
+                ++has_errors;
+                continue;
+            }
+            int mapTile = here->i;
+            tileMapping[mapChar] = mapTile;
+            skip_line(&here);
+            continue;
+        }
+
         if (strcmp(here->text, ".mapdata") == 0) {
             if (done_initial) {
                 parse_error(here, ".mapdata must precede other statements except exports");
                 ++has_errors;
                 skip_line(&here);
                 continue;
+            }
+            if (!add_label(&first_lbl, "mapdata", code_pos)) {
+                parse_error(here, "could not create label for mapdata (already exists?)");
             }
 
             here = here->next;
@@ -332,15 +364,16 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 parse_error(here, "Failed to read mapdata.");
             } else {
                 // write data
-                uint32_t v = data->width;
-                fwrite(&v, 4, 1, out);
+                uint16_t v = data->width;
+                fwrite(&v, 2, 1, out);
                 v = data->height;
-                fwrite(&v, 4, 1, out);
-                code_pos += 8;
+                fwrite(&v, 2, 1, out);
+                code_pos += 4;
                 struct map_line *line = data->data;
                 while (line) {
                     for (unsigned i = 0; i < data->width; ++i) {
-                        fputc(line->data[i], out);
+                        char c = line->data[i];
+                        fputc(tileMapping[(int)c], out);
                         ++code_pos;
                     }
                     line = line->next;
