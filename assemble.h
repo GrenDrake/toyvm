@@ -70,6 +70,8 @@ struct parse_data {
     int error_count;
     struct token *first_token;
     struct token *here;
+    struct backpatch *patches;
+    char tile_mapping[256];
 };
 
 

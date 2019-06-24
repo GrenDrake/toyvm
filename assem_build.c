@@ -6,6 +6,11 @@
 #include "assemble.h"
 #include "opcode.h"
 
+static void add_patch(struct parse_data *state, unsigned pos, const char *name);
+static int data_string(struct parse_data *state);
+static int data_zeroes(struct parse_data *state);
+static int data_bytes(struct parse_data *state, int width);
+
 static int data_string(struct parse_data *state);
 static int data_zeroes(struct parse_data *state);
 static int data_bytes(struct parse_data *state, int width);
@@ -47,20 +52,18 @@ struct mnemonic mnemonics[] = {
     {   op_bad,     NULL,       0 }
 };
 
-struct backpatch *patches = NULL;
-char tileMapping[256] = { 0 };
 
-
-static void add_patch(unsigned pos, const char *name) {
+void add_patch(struct parse_data *state, unsigned pos, const char *name) {
     struct backpatch *patch = malloc(sizeof(struct backpatch));
     if (!patch) return;
     patch->address = pos;
     patch->name = str_dup(name);
-    patch->next = patches;
-    patches = patch;
+    patch->next = state->patches;
+    state->patches = patch;
 }
 
-static int data_string(struct parse_data *state) {
+
+int data_string(struct parse_data *state) {
     state->here = state->here->next;
 
     if (!require_type(state, tt_string)) {
@@ -78,7 +81,7 @@ static int data_string(struct parse_data *state) {
     return 1;
 }
 
-static int data_zeroes(struct parse_data *state) {
+int data_zeroes(struct parse_data *state) {
     state->here = state->here->next;
     if (!require_type(state, tt_integer)) {
         return 0;
@@ -94,7 +97,7 @@ static int data_zeroes(struct parse_data *state) {
     return 1;
 }
 
-static int data_bytes(struct parse_data *state, int width) {
+int data_bytes(struct parse_data *state, int width) {
     state->here = state->here->next;
 #ifdef DEBUG
     printf("0x%08X data(%d)", *code_pos, width);
@@ -184,7 +187,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                             strcpy(buffer, state.here->text);
                             fwrite(buffer, 16, 1, state.out);
                             state.code_pos += 16;
-                            add_patch(ftell(state.out), state.here->text);
+                            add_patch(&state, ftell(state.out), state.here->text);
                             write_long(&state, 0);
                             ++count;
                         }
@@ -218,7 +221,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 continue;
             }
             int mapTile = state.here->i;
-            tileMapping[mapChar] = mapTile;
+            state.tile_mapping[mapChar] = mapTile;
             skip_line(&state.here);
             continue;
         }
@@ -248,7 +251,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 struct map_line *line = data->data;
                 while (line) {
                     for (unsigned i = 0; i < data->width; ++i) {
-                        write_byte(&state, tileMapping[(int)line->data[i]]);
+                        write_byte(&state, state.tile_mapping[(int)line->data[i]]);
                     }
                     line = line->next;
                 }
@@ -372,7 +375,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                         op_value = label->pos;
                     } else {
                         op_value = -1;
-                        add_patch(ftell(state.out), operand->text);
+                        add_patch(&state, ftell(state.out), operand->text);
                     }
                     break;
                 default:
@@ -416,7 +419,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
     fwrite("TVM", 4, 1, state.out);
 
     // update backpatches
-    struct backpatch *patch = patches;
+    struct backpatch *patch = state.patches;
     while (patch) {
         struct label_def *label = get_label(first_lbl, patch->name);
         if (!label) {
