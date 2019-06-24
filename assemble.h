@@ -100,4 +100,7 @@ int matches_type(struct parse_data *state, enum token_type type);
 void skip_line(struct token **current);
 void parse_error(struct parse_data *data, const char *err_msg);
 
+struct map_data* map_reader(const char *source_file);
+void free_mapdata(struct map_data *data);
+
 #endif
