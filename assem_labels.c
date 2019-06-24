@@ -5,10 +5,8 @@
 #include "assemble.h"
 
 
-int add_label(struct label_def **first_lbl, const char *name, int pos) {
-    struct label_def *cur = *first_lbl;
-
-    struct label_def *existing = get_label(*first_lbl, name);
+int add_label(struct parse_data *state, const char *name, int pos) {
+    struct label_def *existing = get_label(state, name);
     if (existing) {
         return 0;
     }
@@ -19,18 +17,13 @@ int add_label(struct label_def **first_lbl, const char *name, int pos) {
     }
     new_lbl->name = str_dup(name);
     new_lbl->pos = pos;
-
-    if (cur == NULL) {
-        new_lbl->next = NULL;
-    } else {
-        new_lbl->next = cur;
-    }
-    *first_lbl = new_lbl;
+    new_lbl->next = state->first_label;
+    state->first_label = new_lbl;
     return 1;
 }
 
-struct label_def* get_label(struct label_def *first, const char *name) {
-    struct label_def *current = first;
+struct label_def* get_label(struct parse_data *state, const char *name) {
+    struct label_def *current = state->first_label;
 
     while (current) {
         if (strcmp(name, current->name) == 0) {
@@ -42,16 +35,16 @@ struct label_def* get_label(struct label_def *first, const char *name) {
     return NULL;
 }
 
-void dump_labels(struct label_def *first) {
-    struct label_def *cur = first;
+void dump_labels(struct parse_data *state) {
+    struct label_def *cur = state->first_label;
     while (cur) {
         printf("0x%08X  %s\n", cur->pos, cur->name);
         cur = cur->next;
     }
 }
 
-void free_labels(struct label_def *first) {
-    struct label_def *cur = first;
+void free_labels(struct parse_data *state) {
+    struct label_def *cur = state->first_label;
     while (cur) {
         struct label_def *next = cur->next;
         free(cur->name);

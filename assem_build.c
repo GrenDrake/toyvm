@@ -86,40 +86,6 @@ void write_long(struct parse_data *state, uint32_t value) {
 /* ************************************************************************* *
  * DIRECTIVE PROCESSING                                                      *
  * ************************************************************************* */
-int data_string(struct parse_data *state) {
-    state->here = state->here->next;
-
-    if (!require_type(state, tt_string)) {
-        return 0;
-    }
-
-#ifdef DEBUG
-    printf("0x%08X string ~%s~\n", *code_pos, here->text);
-#endif
-    for (int pos = 0; state->here->text[pos] != 0; ++pos) {
-        write_byte(state, state->here->text[pos]);
-    }
-    write_byte(state, 0);
-    skip_line(&state->here);
-    return 1;
-}
-
-int data_zeroes(struct parse_data *state) {
-    state->here = state->here->next;
-    if (!require_type(state, tt_integer)) {
-        return 0;
-    }
-
-#ifdef DEBUG
-    printf("0x%08X zeroes (%d)\n", *code_pos, here->i);
-#endif
-    for (int i = 0; i < state->here->i; ++i) {
-        write_byte(state, 0);
-    }
-    skip_line(&state->here);
-    return 1;
-}
-
 int data_bytes(struct parse_data *state, int width) {
     state->here = state->here->next;
 #ifdef DEBUG
@@ -148,6 +114,141 @@ int data_bytes(struct parse_data *state, int width) {
     return 1;
 }
 
+int data_define(struct parse_data *state) {
+    state->here = state->here->next;
+    if (state->here->type != tt_identifier) {
+        parse_error(state, "expected identifier");
+        skip_line(&state->here);
+        return 0;
+    }
+    const char *name = state->here->text;
+    state->here = state->here->next;
+    if (state->here->type != tt_integer) {
+        parse_error(state, "expected integer");
+        skip_line(&state->here);
+        return 0;
+    }
+
+    if (!add_label(state, name, state->here->i)) {
+        parse_error(state, "error creating constant");
+        skip_line(&state->here);
+        return 0;
+    }
+    skip_line(&state->here);
+    return 1;
+}
+
+int data_export(struct parse_data *state) {
+    uint32_t count = 0;
+    long countpos = ftell(state->out);
+    write_long(state, 0);
+
+    state->here = state->here->next;
+    while (!matches_type(state, tt_eol)) {
+        if (require_type(state, tt_identifier)) {
+            char buffer[20] = "";
+
+            if (strlen(state->here->text) > 16) {
+                strncpy(buffer, state->here->text, 16);
+                parse_error(state, "Label longer than 16 characters; export name truncated.");
+            } else {
+                strcpy(buffer, state->here->text);
+            }
+            fwrite(buffer, 16, 1, state->out);
+            state->code_pos += 16;
+            add_patch(state, ftell(state->out), state->here->text);
+            write_long(state, 0);
+            ++count;
+        }
+        state->here = state->here->next;
+    }
+    fseek(state->out, countpos, SEEK_SET);
+    fwrite(&count, 4, 1, state->out);
+    fseek(state->out, 0, SEEK_END);
+    return 1;
+}
+
+int data_string(struct parse_data *state) {
+    state->here = state->here->next;
+
+    if (!require_type(state, tt_string)) {
+        return 0;
+    }
+
+#ifdef DEBUG
+    printf("0x%08X string ~%s~\n", *code_pos, here->text);
+#endif
+    for (int pos = 0; state->here->text[pos] != 0; ++pos) {
+        write_byte(state, state->here->text[pos]);
+    }
+    write_byte(state, 0);
+    skip_line(&state->here);
+    return 1;
+}
+
+int data_mapdata(struct parse_data *state) {
+    if (!add_label(state, "mapdata", state->code_pos)) {
+        parse_error(state, "could not create label for mapdata (already exists?)");
+    }
+
+    state->here = state->here->next;
+    if (!require_type(state, tt_string)) {
+        return 0;
+    }
+    struct map_data *data = map_reader(state->here->text);
+    if (!data) {
+        parse_error(state, "Failed to read mapdata.");
+    } else {
+        // write data
+        write_short(state, data->width);
+        write_short(state, data->height);
+        struct map_line *line = data->data;
+        while (line) {
+            for (unsigned i = 0; i < data->width; ++i) {
+                write_byte(state, state->tile_mapping[(int)line->data[i]]);
+            }
+            line = line->next;
+        }
+        free_mapdata(data);
+    }
+    skip_line(&state->here);
+    return 1;
+}
+
+int data_tileinfo(struct parse_data *state) {
+    state->here = state->here->next;
+    if (!require_type(state, tt_integer)) {
+        return 0;
+    }
+    int mapChar = state->here->i;
+
+    state->here = state->here->next;
+    if (!require_type(state, tt_integer)) {
+        parse_error(state, "Expected map tile value.");
+        return 0;
+    }
+    int mapTile = state->here->i;
+    state->tile_mapping[mapChar] = mapTile;
+    skip_line(&state->here);
+    return 1;
+}
+
+int data_zeroes(struct parse_data *state) {
+    state->here = state->here->next;
+    if (!require_type(state, tt_integer)) {
+        return 0;
+    }
+
+#ifdef DEBUG
+    printf("0x%08X zeroes (%d)\n", *code_pos, here->i);
+#endif
+    for (int i = 0; i < state->here->i; ++i) {
+        write_byte(state, 0);
+    }
+    skip_line(&state->here);
+    return 1;
+}
+
 
 
 /* ************************************************************************* *
@@ -156,7 +257,6 @@ int data_bytes(struct parse_data *state, int width) {
 int parse_tokens(struct token_list *list, const char *output_filename) {
     struct parse_data state = { NULL };
     int done_initial = 0;
-    struct label_def *first_lbl = NULL;
 
     state.out = fopen(output_filename, "wb+");
     if (!state.out) {
@@ -187,33 +287,9 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 parse_error(&state, ".export must precede other statements");
                 skip_line(&state.here);
                 continue;
-            } else {
-                uint32_t count = 0;
-                long countpos = ftell(state.out);
-                write_long(&state, 0);
-
-                state.here = state.here->next;
-                while (!matches_type(&state, tt_eol)) {
-                    if (require_type(&state, tt_identifier)) {
-                        if (strlen(state.here->text) > 16) {
-                            parse_error(&state, "Export names must be <= 16 characters.");
-                        } else {
-                            char buffer[20] = "";
-                            strcpy(buffer, state.here->text);
-                            fwrite(buffer, 16, 1, state.out);
-                            state.code_pos += 16;
-                            add_patch(&state, ftell(state.out), state.here->text);
-                            write_long(&state, 0);
-                            ++count;
-                        }
-                    }
-                    state.here = state.here->next;
-                }
-                fseek(state.out, countpos, SEEK_SET);
-                fwrite(&count, 4, 1, state.out);
-                fseek(state.out, 0, SEEK_END);
-                continue;
             }
+            data_export(&state);
+            continue;
         }
 
         if (strcmp(state.here->text, ".tileinfo") == 0) {
@@ -222,22 +298,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 skip_line(&state.here);
                 continue;
             }
-
-            state.here = state.here->next;
-            if (!state.here || state.here->type != tt_integer) {
-                parse_error(&state, "Expected map tile character.");
-                continue;
-            }
-            int mapChar = state.here->i;
-
-            state.here = state.here->next;
-            if (!state.here || state.here->type != tt_integer) {
-                parse_error(&state, "Expected map tile value.");
-                continue;
-            }
-            int mapTile = state.here->i;
-            state.tile_mapping[mapChar] = mapTile;
-            skip_line(&state.here);
+            data_tileinfo(&state);
             continue;
         }
 
@@ -247,39 +308,14 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 skip_line(&state.here);
                 continue;
             }
-            if (!add_label(&first_lbl, "mapdata", state.code_pos)) {
-                parse_error(&state, "could not create label for mapdata (already exists?)");
-            }
-
-            state.here = state.here->next;
-            if (!state.here || state.here->type != tt_string) {
-                parse_error(&state, "Expected mapdata filename as string.");
-                continue;
-            }
-            struct map_data *data = map_reader(state.here->text);
-            if (!data) {
-                parse_error(&state, "Failed to read mapdata.");
-            } else {
-                // write data
-                write_short(&state, data->width);
-                write_short(&state, data->height);
-                struct map_line *line = data->data;
-                while (line) {
-                    for (unsigned i = 0; i < data->width; ++i) {
-                        write_byte(&state, state.tile_mapping[(int)line->data[i]]);
-                    }
-                    line = line->next;
-                }
-                free_mapdata(data);
-            }
-            skip_line(&state.here);
+            data_mapdata(&state);
             continue;
         }
 
         done_initial = 1;
 
         if (state.here->next && state.here->next->type == tt_colon) {
-            if (!add_label(&first_lbl, state.here->text, state.code_pos)) {
+            if (!add_label(&state, state.here->text, state.code_pos)) {
                 parse_error(&state, "could not create label (already exists?)");
             }
             state.here = state.here->next->next;
@@ -309,26 +345,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
         }
 
         if (strcmp(state.here->text, ".define") == 0) {
-            state.here = state.here->next;
-            if (state.here->type != tt_identifier) {
-                parse_error(&state, "expected identifier");
-                skip_line(&state.here);
-                continue;
-            }
-            const char *name = state.here->text;
-            state.here = state.here->next;
-            if (state.here->type != tt_integer) {
-                parse_error(&state, "expected integer");
-                skip_line(&state.here);
-                continue;
-            }
-
-            if (!add_label(&first_lbl, name, state.here->i)) {
-                parse_error(&state, "error creating constant");
-                skip_line(&state.here);
-                continue;
-            }
-            skip_line(&state.here);
+            data_define(&state);
             continue;
         }
 
@@ -385,7 +402,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                     op_value = operand->i;
                     break;
                 case tt_identifier:
-                    label = get_label(first_lbl, operand->text);
+                    label = get_label(&state, operand->text);
                     if (label) {
                         op_value = label->pos;
                     } else {
@@ -436,7 +453,7 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
     // update backpatches
     struct backpatch *patch = state.patches;
     while (patch) {
-        struct label_def *label = get_label(first_lbl, patch->name);
+        struct label_def *label = get_label(&state, patch->name);
         if (!label) {
             fprintf(stderr, "Undefined symbol %s.\n", patch->name);
             ++state.error_count;
@@ -455,8 +472,8 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
     fclose(state.out);
 #ifdef DEBUG
     printf("\nLABELS\n");
-    dump_labels(first_lbl);
+    dump_labels(&state);
 #endif
-    free_labels(first_lbl);
+    free_labels(&state);
     return state.error_count;
 }

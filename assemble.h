@@ -72,6 +72,7 @@ struct parse_data {
     struct token *here;
     struct backpatch *patches;
     char tile_mapping[256];
+    struct label_def *first_label;
 };
 
 
@@ -84,10 +85,10 @@ void free_tokens(struct token_list *list);
 void dump_tokens(struct token_list *list);
 struct token_list* lex_file(const char *filename);
 
-int add_label(struct label_def **first_lbl, const char *name, int pos);
-struct label_def* get_label(struct label_def *first, const char *name);
-void dump_labels(struct label_def *first);
-void free_labels(struct label_def *first);
+int add_label(struct parse_data *state, const char *name, int pos);
+struct label_def* get_label(struct parse_data *state, const char *name);
+void dump_labels(struct parse_data *state);
+void free_labels(struct parse_data *state);
 
 int parse_tokens(struct token_list *list, const char *output_filename);
 
