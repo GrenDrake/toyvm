@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,42 +5,6 @@
 
 #include "assemble.h"
 #include "opcode.h"
-
-struct map_line {
-    char *data;
-    struct map_line *next;
-};
-struct map_data {
-    unsigned size;
-    unsigned width, height;
-    struct map_line *data;
-};
-
-struct backpatch {
-    unsigned address;
-    char *name;
-
-    struct backpatch *next;
-};
-
-struct parse_data {
-    FILE *out;
-    unsigned code_pos;
-    int error_count;
-    struct token *first_token;
-    struct token *here;
-};
-
-void write_byte(struct parse_data *state, uint8_t value);
-void write_short(struct parse_data *state, uint16_t value);
-void write_long(struct parse_data *state, uint32_t value);
-
-static void print_location(struct token *token);
-static const char* type_name(enum token_type type);
-static int require_type(struct parse_data *state, enum token_type type);
-static int matches_type(struct parse_data *state, enum token_type type);
-static void skip_line(struct token **current);
-static void parse_error(struct parse_data *data, const char *err_msg);
 
 static struct map_data* map_reader(const char *source_file);
 
@@ -90,24 +53,6 @@ struct backpatch *patches = NULL;
 char tileMapping[256] = { 0 };
 
 
-
-void str_trim(char *str) {
-    if (!str) return;
-    if (str[0] == 0) return;
-
-    long initial_length = strlen(str);
-    long len = initial_length;
-    --len;
-    while (len > 0 && isspace(str[len])) {
-        str[len] = 0;
-        --len;
-    }
-
-    len = 0;
-    while (str[len] != 0 && isspace(str[len])) ++len;
-    memmove(str, &str[len], initial_length - len);
-}
-
 void free_mapdata(struct map_data *data) {
     struct map_line *line = data->data;
     while (line) {
@@ -117,6 +62,7 @@ void free_mapdata(struct map_data *data) {
     }
     free(data);
 }
+
 static struct map_data* map_reader(const char *source_file) {
     FILE *in = fopen(source_file, "rt");
     if (!in) {
@@ -168,61 +114,6 @@ static void add_patch(unsigned pos, const char *name) {
     patch->name = str_dup(name);
     patch->next = patches;
     patches = patch;
-}
-
-static void print_location(struct token *token) {
-    fprintf(stderr, "%s:%d:%d ",
-           token->source_file,
-           token->line,
-           token->column);
-}
-static const char* type_name(enum token_type type) {
-    switch(type) {
-        case tt_bad:        return "bad token";
-        case tt_colon:      return "colon";
-        case tt_eol:        return "end-of-line";
-        case tt_identifier: return "identifier";
-        case tt_integer:    return "integer";
-        case tt_string:     return "string";
-        default:            return "unknown token type";
-    }
-}
-
-static int require_type(struct parse_data *state, enum token_type type) {
-    if (!state || !state->here) return 0;
-    if (state->here->type == type) return 1;
-    ++state->error_count;
-    print_location(state->here);
-    fprintf(stderr, "Expected %s, but found %s.\n",
-                    type_name(type),
-                    type_name(state->here->type));
-    return 0;
-}
-
-static int matches_type(struct parse_data *state, enum token_type type) {
-    if (!state || !state->here) return 0;
-    if (state->here->type == type) return 1;
-    return 0;
-}
-
-static void skip_line(struct token **current) {
-    struct token *here = *current;
-
-    while (here && here->type != tt_eol) {
-        here = here->next;
-    }
-
-    if (here) {
-        *current = here->next;
-    } else {
-        *current = NULL;
-    }
-}
-
-static void parse_error(struct parse_data *data, const char *err_msg) {
-    ++data->error_count;
-    print_location(data->here);
-    printf("%s\n", err_msg);
 }
 
 static int data_string(struct parse_data *state) {
