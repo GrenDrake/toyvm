@@ -22,7 +22,10 @@ int main(int argc, char *argv[]) {
     }
 
 //    dump_tokens(tokens);
-    parse_tokens(tokens, outfile);
+    int error_count = parse_tokens(tokens, outfile);
+    if (error_count > 0) {
+        fprintf(stderr, "Found %d errors.\n", error_count);
+    }
     free_tokens(tokens);
     return 0;
 }
