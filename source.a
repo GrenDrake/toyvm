@@ -1,5 +1,7 @@
 .export start test_function abarelyvalidname
 
+.mapdata "source.map"
+
 some_bytes:
     .byte 1 2 3 4
     .zero 20

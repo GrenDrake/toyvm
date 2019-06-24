@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,8 @@
 
 static void skip_line(struct token **current);
 static void parse_error(struct token *where, const char *err_msg);
+
+static struct map_data* map_reader(const char *source_file);
 
 static int data_string(FILE *out, struct token *first, int *code_pos);
 static int data_zeroes(FILE *out, struct token *first, int *code_pos);
@@ -50,6 +53,16 @@ struct mnemonic mnemonics[] = {
     {   op_bad,     NULL,       0 }
 };
 
+struct map_line {
+    char *data;
+    struct map_line *next;
+};
+struct map_data {
+    unsigned size;
+    unsigned width, height;
+    struct map_line *data;
+};
+
 struct backpatch {
     unsigned address;
     char *name;
@@ -58,6 +71,76 @@ struct backpatch {
 };
 
 struct backpatch *patches = NULL;
+
+void str_trim(char *str) {
+    if (!str) return;
+    if (str[0] == 0) return;
+
+    long initial_length = strlen(str);
+    long len = initial_length;
+    --len;
+    while (len > 0 && isspace(str[len])) {
+        str[len] = 0;
+        --len;
+    }
+
+    len = 0;
+    while (str[len] != 0 && isspace(str[len])) ++len;
+    memmove(str, &str[len], initial_length - len);
+}
+
+void free_mapdata(struct map_data *data) {
+    struct map_line *line = data->data;
+    while (line) {
+        struct map_line *next = line->next;
+        free(line);
+        line = next;
+    }
+    free(data);
+}
+static struct map_data* map_reader(const char *source_file) {
+    FILE *in = fopen(source_file, "rt");
+    if (!in) {
+        fprintf(stderr, "%s: could not open file\n", source_file);
+        return NULL;
+    }
+    struct map_data *data = malloc(sizeof(struct map_data));
+    if (!data) {
+        fprintf(stderr, "%s: memory allocation error\n", source_file);
+        fclose(in);
+        return NULL;
+    }
+    data->data = NULL;
+
+    char inbuf[501];
+    fgets(inbuf, 500, in);
+    str_trim(inbuf);
+    struct map_line *last;
+    data->width = strlen(inbuf);
+    data->data = malloc(sizeof(struct map_line));
+    data->data->data = str_dup(inbuf);
+    last = data->data;
+    data->height = 1;
+    while (1) {
+        fgets(inbuf, 500, in);
+        if (feof(in)) break;
+
+        str_trim(inbuf);
+        if (strlen(inbuf) != data->width) {
+            fprintf(stderr, "%s: unexpected width of map line\n", source_file);
+            free_mapdata(data);
+            fclose(in);
+            return NULL;
+        }
+        last->next = malloc(sizeof(struct map_line));
+        last->next->data = str_dup(inbuf);
+        last = last->next;
+        ++data->height;
+    }
+
+    fclose(in);
+    return data;
+}
 
 static void add_patch(unsigned pos, const char *name) {
     struct backpatch *patch = malloc(sizeof(struct backpatch));
@@ -228,6 +311,44 @@ int parse_tokens(struct token_list *list, const char *output_filename) {
                 fseek(out, 0, SEEK_END);
                 continue;
             }
+        }
+
+        if (strcmp(here->text, ".mapdata") == 0) {
+            if (done_initial) {
+                parse_error(here, ".mapdata must precede other statements except exports");
+                ++has_errors;
+                skip_line(&here);
+                continue;
+            }
+
+            here = here->next;
+            if (!here || here->type != tt_string) {
+                parse_error(here, "Expected mapdata filename as string.");
+                ++has_errors;
+                continue;
+            }
+            struct map_data *data = map_reader(here->text);
+            if (!data) {
+                parse_error(here, "Failed to read mapdata.");
+            } else {
+                // write data
+                uint32_t v = data->width;
+                fwrite(&v, 4, 1, out);
+                v = data->height;
+                fwrite(&v, 4, 1, out);
+                code_pos += 8;
+                struct map_line *line = data->data;
+                while (line) {
+                    for (unsigned i = 0; i < data->width; ++i) {
+                        fputc(line->data[i], out);
+                        ++code_pos;
+                    }
+                    line = line->next;
+                }
+                free_mapdata(data);
+            }
+            skip_line(&here);
+            continue;
         }
 
         done_initial = 1;
