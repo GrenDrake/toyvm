@@ -15,6 +15,10 @@ static int data_string(struct parse_data *state);
 static int data_zeroes(struct parse_data *state);
 static int data_bytes(struct parse_data *state, int width);
 
+
+/* ************************************************************************* *
+ * OPCODE DEFINITIONS                                                        *
+ * ************************************************************************* */
 struct mnemonic mnemonics[] = {
     {   op_exit,    "exit",     0 },
 
@@ -53,6 +57,9 @@ struct mnemonic mnemonics[] = {
 };
 
 
+/* ************************************************************************* *
+ * GENERAL UTILITY                                                           *
+ * ************************************************************************* */
 void add_patch(struct parse_data *state, unsigned pos, const char *name) {
     struct backpatch *patch = malloc(sizeof(struct backpatch));
     if (!patch) return;
@@ -62,7 +69,23 @@ void add_patch(struct parse_data *state, unsigned pos, const char *name) {
     state->patches = patch;
 }
 
+void write_byte(struct parse_data *state, uint8_t value) {
+    fputc(value, state->out);
+    ++state->code_pos;
+}
+void write_short(struct parse_data *state, uint16_t value) {
+    fwrite(&value, 2, 1, state->out);
+    state->code_pos += 2;
+}
+void write_long(struct parse_data *state, uint32_t value) {
+    fwrite(&value, 4, 1, state->out);
+    state->code_pos += 4;
+}
 
+
+/* ************************************************************************* *
+ * DIRECTIVE PROCESSING                                                      *
+ * ************************************************************************* */
 int data_string(struct parse_data *state) {
     state->here = state->here->next;
 
@@ -125,19 +148,11 @@ int data_bytes(struct parse_data *state, int width) {
     return 1;
 }
 
-void write_byte(struct parse_data *state, uint8_t value) {
-    fputc(value, state->out);
-    ++state->code_pos;
-}
-void write_short(struct parse_data *state, uint16_t value) {
-    fwrite(&value, 2, 1, state->out);
-    state->code_pos += 2;
-}
-void write_long(struct parse_data *state, uint32_t value) {
-    fwrite(&value, 4, 1, state->out);
-    state->code_pos += 4;
-}
 
+
+/* ************************************************************************* *
+ * CORE PARSING ROUTINE                                                      *
+ * ************************************************************************* */
 int parse_tokens(struct token_list *list, const char *output_filename) {
     struct parse_data state = { NULL };
     int done_initial = 0;
